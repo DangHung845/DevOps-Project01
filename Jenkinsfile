@@ -1,29 +1,69 @@
 pipeline {
     agent any
     
+    environment {
+        MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository'
+        JAVA_HOME = tool 'JDK17'
+    }
+    
+    tools {
+        maven 'Maven3'
+    }
+    
     stages {
-        stage('Service A - Test') {
+        stage('Checkout') {
             steps {
-                echo "Running TEST for service-a"
+                checkout scm
             }
         }
-
-        stage('Service A - Build') {
+        
+        stage('Build') {
             steps {
-                echo "Running BUILD for service-a"
+                sh 'mvn clean install -pl customer -am -DskipTests'
             }
         }
-
-        stage('Service B - Test') {
+        
+        stage('Test') {
             steps {
-                echo "Running TEST for service-b"
+                sh 'mvn test -pl customer -am'
+            }
+            post {
+                always {
+                    // Upload test results
+                    junit testResults: 'customer/**/surefire-reports/TEST-*.xml', allowEmptyResults: true
+                    
+                    // Upload code coverage report
+                    jacoco(
+                        execPattern: 'customer/target/jacoco.exec',
+                        classPattern: 'customer/target/classes',
+                        sourcePattern: 'customer/src/main/java',
+                        exclusionPattern: '**/*Test*.class'
+                    )
+                    
+                    // Publish HTML coverage report
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'customer/target/site/jacoco',
+                        reportFiles: 'index.html',
+                        reportName: 'Customer Coverage Report',
+                        reportTitles: 'Code Coverage Report'
+                    ])
+                }
             }
         }
-
-        stage('Service B - Build') {
-            steps {
-                echo "Running BUILD for service-b"
-            }
+    }
+    
+    post {
+        success {
+            echo 'Customer Service CI Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Customer Service CI Pipeline failed!'
+        }
+        always {
+            cleanWs()
         }
     }
 }
