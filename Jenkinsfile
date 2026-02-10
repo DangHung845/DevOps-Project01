@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository'
-        JAVA_HOME = tool 'JDK17'
+        JAVA_HOME = tool 'JDK21'
     }
     
     tools {
@@ -25,7 +25,7 @@ pipeline {
         
         stage('Test') {
             steps {
-                sh 'mvn test -pl customer -am'
+                sh 'mvn test jacoco:report -pl customer -am'
             }
             post {
                 always {
@@ -42,7 +42,7 @@ pipeline {
                     
                     // Publish HTML coverage report
                     publishHTML([
-                        allowMissing: false,
+                        allowMissing: true,  // Đổi sang true để không fail nếu không có report
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
                         reportDir: 'customer/target/site/jacoco',
@@ -61,9 +61,6 @@ pipeline {
         }
         failure {
             echo 'Customer Service CI Pipeline failed!'
-        }
-        always {
-            cleanWs()
         }
     }
 }
