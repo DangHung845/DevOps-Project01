@@ -100,11 +100,6 @@ pipeline {
             }
             post {
                 always {
-                    // Prevent Checks API / junit publishing warnings from marking build UNSTABLE
-                    catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                        junit testResults: '**/target/surefire-reports/TEST-*.xml', allowEmptyResults: true
-                    }
-
                     script {
                         def mods = (env.IMPACTED_MODULES?.trim() ? env.IMPACTED_MODULES.split(',') : []) as List
                         mods.each { m ->
@@ -132,16 +127,6 @@ pipeline {
     }
 
     post {
-        cleanup {
-            script {
-                // If build is only UNSTABLE due to publishers (e.g., Checks API), force it back to SUCCESS.
-                // NOTE: This will NOT override FAILURE.
-                if (currentBuild.currentResult == 'UNSTABLE') {
-                    echo "Forcing build result from UNSTABLE to SUCCESS (ignoring Checks API)."
-                    currentBuild.result = 'SUCCESS'
-                }
-            }
-        }
         success { echo 'Monorepo CI Pipeline completed successfully!' }
         failure { echo 'Monorepo CI Pipeline failed!' }
     }
