@@ -100,6 +100,8 @@ pipeline {
             }
             post {
                 always {
+                    junit testResults: '**/target/surefire-reports/TEST-*.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
+
                     script {
                         def mods = (env.IMPACTED_MODULES?.trim() ? env.IMPACTED_MODULES.split(',') : []) as List
                         mods.each { m ->
