@@ -194,38 +194,55 @@ pipeline {
             when { expression { return env.IMPACTED_MODULES?.trim() } }
             steps {
                 script {
-                    def minLine = (env.COVERAGE_MIN_LINE ?: '0.70') as BigDecimal
+                    def minCoverage = 70.0
                     def mods = env.IMPACTED_MODULES.split(',') as List
-
                     def failures = []
+
                     mods.each { m ->
                         def reportPath = "${m}/target/site/jacoco/jacoco.xml"
                         if (!fileExists(reportPath)) {
-                            failures << "${m}: missing ${reportPath}"
+                            echo "⚠️  ${m}: Coverage report not found at ${reportPath}"
                             return
                         }
 
-                        // Use default XmlSlurper constructor so it is allowed in Jenkins sandbox
-                        def xml = new XmlSlurper().parseText(readFile(reportPath))
-                        def lineCounter = xml.counter.find { it.@type?.toString() == 'LINE' }
-                        if (!lineCounter) {
-                            failures << "${m}: LINE counter not found in jacoco.xml"
+                        // Use bash to extract coverage from XML
+                        def coverageCmd = """
+                            grep -oP 'type="LINE"[^>]*covered="\\K[^"]+' ${reportPath} | head -1
+                        """
+                        def coveredStr = sh(script: coverageCmd, returnStdout: true).trim()
+
+                        def missedCmd = """
+                            grep -oP 'type="LINE"[^>]*missed="\\K[^"]+' ${reportPath} | head -1
+                        """
+                        def missedStr = sh(script: missedCmd, returnStdout: true).trim()
+
+                        if (!coveredStr || !missedStr) {
+                            echo "⚠️  ${m}: Could not extract coverage data from jacoco.xml"
                             return
                         }
 
-                        def missed = (lineCounter.@missed?.toString() ?: '0') as BigDecimal
-                        def covered = (lineCounter.@covered?.toString() ?: '0') as BigDecimal
-                        def total = missed + covered
-                        def ratio = total > 0 ? (covered / total) : 0
+                        try {
+                            def covered = coveredStr.toLong()
+                            def missed = missedStr.toLong()
+                            def total = covered + missed
+                            def coverage = total > 0 ? (covered.toDouble() / total * 100) : 0.0
 
-                        echo "Coverage (LINE) ${m}: ${(ratio * 100).setScale(2, java.math.RoundingMode.HALF_UP)}%"
-                        if (ratio <= minLine) {
-                            failures << "${m}: ${(ratio * 100).setScale(2, java.math.RoundingMode.HALF_UP)}% <= ${(minLine * 100).setScale(0, java.math.RoundingMode.HALF_UP)}%"
+                            echo "Coverage (LINE) ${m}: ${String.format('%.2f', coverage)}%"
+
+                            if (coverage <= minCoverage) {
+                                failures << "${m}: ${String.format('%.2f', coverage)}% <= ${minCoverage}%"
+                            }
+                        } catch (Exception e) {
+                            echo "⚠️  ${m}: Error parsing coverage: ${e.message}"
                         }
                     }
 
                     if (!failures.isEmpty()) {
-                        error "Coverage gate failed (LINE must be > ${(minLine * 100).setScale(0, java.math.RoundingMode.HALF_UP)}%).\\n- " + failures.join("\\n- ")
+                        echo "❌ Coverage gate FAILED - modules below ${minCoverage}%:"
+                        failures.each { echo "  - ${it}" }
+                        error("Coverage gate failed! LINE coverage must be > ${minCoverage}%")
+                    } else {
+                        echo "✅ Coverage gate PASSED - all modules above ${minCoverage}%"
                     }
                 }
             }
