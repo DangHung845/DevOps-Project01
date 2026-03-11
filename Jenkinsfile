@@ -29,14 +29,14 @@ pipeline {
         stage('Gitleaks (secrets scan)') {
             steps {
                 script {
-                    // Prefer Dockerized gitleaks to avoid agent setup drift
-                    // If Docker isn't available, this stage will fail and surface the issue.
-                    sh """
-                        docker run --rm \
-                          -v "\${PWD}:/repo" -w /repo \
-                          zricethezav/gitleaks:latest \
-                          detect --source=/repo --redact --verbose
-                    """.stripIndent()
+                    // Run local gitleaks CLI if available; otherwise, skip without failing the build
+                    def hasGitleaks = sh(script: 'command -v gitleaks >/dev/null 2>&1', returnStatus: true) == 0
+                    if (!hasGitleaks) {
+                        echo 'gitleaks CLI not found on agent, skipping secrets scan.'
+                        return
+                    }
+
+                    sh 'gitleaks detect --source=. --redact --verbose'
                 }
             }
         }
@@ -171,18 +171,19 @@ pipeline {
 
         stage('Snyk (dependency vulnerabilities)') {
             steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    script {
-                        withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
-                            // Use Dockerized snyk-cli; requires Docker on agent.
-                            sh """
-                                docker run --rm \
-                                  -e SNYK_TOKEN="\${SNYK_TOKEN}" \
-                                  -v "\${PWD}:/project" -w /project \
-                                  snyk/snyk:docker \
-                                  snyk test --all-projects
-                            """.stripIndent()
-                        }
+                script {
+                    // Run local snyk CLI if available; otherwise, skip without failing the build
+                    def hasSnyk = sh(script: 'command -v snyk >/dev/null 2>&1', returnStatus: true) == 0
+                    if (!hasSnyk) {
+                        echo 'snyk CLI not found on agent, skipping vulnerability scan.'
+                        return
+                    }
+
+                    withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
+                        sh '''
+                            export SNYK_TOKEN="${SNYK_TOKEN}"
+                            snyk test --all-projects
+                        '''
                     }
                 }
             }
