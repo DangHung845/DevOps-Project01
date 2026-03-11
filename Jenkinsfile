@@ -202,6 +202,7 @@ pipeline {
                         def reportPath = "${m}/target/site/jacoco/jacoco.xml"
                         if (!fileExists(reportPath)) {
                             echo "⚠️  ${m}: Coverage report not found at ${reportPath}"
+                            failures << "${m}: Report not found"
                             return
                         }
 
@@ -211,22 +212,21 @@ pipeline {
                             REPORT="${reportPath}"
                             
                             # Extract covered and missed counts from LINE counter
-                            # Handle both attribute orders (covered first or missed first)
-                            COVERED=\$(grep 'type="LINE"' \$REPORT | head -1 | grep -oP 'covered="\\K[^"]+' || echo "0")
-                            MISSED=\$(grep 'type="LINE"' \$REPORT | head -1 | grep -oP 'missed="\\K[^"]+' || echo "0")
+                            COVERED=\$(grep 'type="LINE"' \$REPORT | sed -n 's/.*covered="\\([^"]*\\)".*/\\1/p' | head -1)
+                            MISSED=\$(grep 'type="LINE"' \$REPORT | sed -n 's/.*missed="\\([^"]*\\)".*/\\1/p' | head -1)
                             
                             if [ -z "\$COVERED" ] || [ -z "\$MISSED" ]; then
-                                echo "0"
-                                exit 0
+                                COVERED=0
+                                MISSED=0
                             fi
                             
                             TOTAL=\$((COVERED + MISSED))
                             if [ \$TOTAL -eq 0 ]; then
-                                echo "0"
+                                COVERAGE=0
                             else
                                 COVERAGE=\$((COVERED * 100 / TOTAL))
-                                echo \$COVERAGE
                             fi
+                            echo \$COVERAGE
                         """
                         def coverage = sh(script: coverageScript, returnStdout: true).trim()
                         
@@ -239,10 +239,10 @@ pipeline {
                     }
 
                     if (!failures.isEmpty()) {
-                        echo "⚠️  Coverage gate would fail, but continuing pipeline for now..."
-                        echo "Modules below ${minCoverage}%:"
+                        echo "❌ Coverage gate FAILED - modules below ${minCoverage}%:"
                         failures.each { echo "  - ${it}" }
-                        echo "Note: Add more unit tests to improve coverage above ${minCoverage}%"
+                        echo "Error: Add more unit tests to improve coverage above ${minCoverage}%"
+                        error("Coverage gate failed for: ${failures.join(', ')}")
                     } else {
                         echo "✅ Coverage gate PASSED - all modules ${minCoverage}% or above"
                     }
