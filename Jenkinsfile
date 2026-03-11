@@ -194,7 +194,7 @@ pipeline {
             when { expression { return env.IMPACTED_MODULES?.trim() } }
             steps {
                 script {
-                    def minCoverage = 70.0
+                    def minCoverage = 70
                     def mods = env.IMPACTED_MODULES.split(',') as List
                     def failures = []
 
@@ -205,35 +205,36 @@ pipeline {
                             return
                         }
 
-                        // Use bash to extract coverage from XML
-                        def coverageCmd = """
-                            grep -oP 'type="LINE"[^>]*covered="\\K[^"]+' ${reportPath} | head -1
+                        // Use bash to calculate coverage percentage
+                        def coverageScript = """
+                            COVERED=\$(grep -oP 'type="LINE"[^>]*covered="\\K[^"]+' ${reportPath} | head -1)
+                            MISSED=\$(grep -oP 'type="LINE"[^>]*missed="\\K[^"]+' ${reportPath} | head -1)
+                            
+                            if [ -z "\$COVERED" ] || [ -z "\$MISSED" ]; then
+                                echo "ERROR"
+                                exit 1
+                            fi
+                            
+                            TOTAL=\$((COVERED + MISSED))
+                            if [ \$TOTAL -eq 0 ]; then
+                                echo "0"
+                            else
+                                COVERAGE=\$((COVERED * 100 / TOTAL))
+                                echo \$COVERAGE
+                            fi
                         """
-                        def coveredStr = sh(script: coverageCmd, returnStdout: true).trim()
-
-                        def missedCmd = """
-                            grep -oP 'type="LINE"[^>]*missed="\\K[^"]+' ${reportPath} | head -1
-                        """
-                        def missedStr = sh(script: missedCmd, returnStdout: true).trim()
-
-                        if (!coveredStr || !missedStr) {
+                        def coverage = sh(script: coverageScript, returnStdout: true).trim()
+                        
+                        if (coverage == "ERROR") {
                             echo "⚠️  ${m}: Could not extract coverage data from jacoco.xml"
                             return
                         }
 
-                        try {
-                            def covered = coveredStr.toLong()
-                            def missed = missedStr.toLong()
-                            def total = covered + missed
-                            def coverage = total > 0 ? (covered.toDouble() / total * 100) : 0.0
+                        def coverageInt = coverage.toInteger()
+                        echo "Coverage (LINE) ${m}: ${coverageInt}%"
 
-                            echo "Coverage (LINE) ${m}: ${String.format('%.2f', coverage)}%"
-
-                            if (coverage <= minCoverage) {
-                                failures << "${m}: ${String.format('%.2f', coverage)}% <= ${minCoverage}%"
-                            }
-                        } catch (Exception e) {
-                            echo "⚠️  ${m}: Error parsing coverage: ${e.message}"
+                        if (coverageInt <= minCoverage) {
+                            failures << "${m}: ${coverageInt}% <= ${minCoverage}%"
                         }
                     }
 
