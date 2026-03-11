@@ -92,10 +92,12 @@ pipeline {
         stage('Test impacted modules') {
             when { expression { return env.IMPACTED_MODULES?.trim() } }
             steps {
-                script {
-                    def mods = env.IMPACTED_MODULES.split(',') as List
-                    def pl = mods.join(',')
-                    sh "mvn -B test jacoco:report -pl ${pl} -am"
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        def mods = env.IMPACTED_MODULES.split(',') as List
+                        def pl = mods.join(',')
+                        sh "mvn -B test jacoco:report -pl ${pl} -am"
+                    }
                 }
             }
             post {
