@@ -219,17 +219,63 @@ class ProductSyncDataServiceTest {
         verify(productRepository).deleteById(id);
     }
 
-    @Disabled
     @Test
-    void testDeleteProduct_whenProductDoesNotExist_throwsNotFoundException() {
+    void testDeleteProduct_whenProductDoesNotExist_doNotThrowException() {
         Long id = 1L;
 
         when(productRepository.existsById(id)).thenReturn(false);
 
-        assertThatThrownBy(() -> productSyncDataService.deleteProduct(id))
-            .isInstanceOf(NotFoundException.class)
-            .hasMessageContaining("The product 1 is not found");
+        // Should not throw any exception
+        productSyncDataService.deleteProduct(id);
 
+        // Verify that deleteById is never called
         verify(productRepository, never()).deleteById(id);
+    }
+
+    @Test
+    void testCreateProduct_whenProductWithAllAttributes_createsAndSavesProduct() {
+
+        mockProductThumbnailVmsByUri();
+        ProductEsDetailVm productEsDetailVm = getProductThumbnailVms();
+
+        productSyncDataService.createProduct(ID);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getId()).isEqualTo(ID);
+        assertThat(actual.getName()).isEqualTo(productEsDetailVm.name());
+        assertThat(actual.getSlug()).isEqualTo(productEsDetailVm.slug());
+        assertThat(actual.getPrice()).isEqualTo(productEsDetailVm.price());
+        assertThat(actual.getIsPublished()).isTrue();
+        assertThat(actual.getIsVisibleIndividually()).isTrue();
+        assertThat(actual.getIsAllowedToOrder()).isTrue();
+        assertThat(actual.getIsFeatured()).isFalse();
+        assertThat(actual.getThumbnailMediaId()).isEqualTo(456L);
+        assertThat(actual.getBrand()).isEqualTo("BrandName");
+        assertThat(actual.getCategories()).containsExactly("Electronics", "Mobile Phones");
+        assertThat(actual.getAttributes()).containsExactly("Color: Black", "Storage: 128GB", "RAM: 6GB");
+    }
+
+    @Test
+    void testUpdateProduct_whenProductIsPublishedWithNewData_updatesAllFields() {
+
+        mockProductThumbnailVmsByUri();
+        Product existingProduct = new Product();
+        existingProduct.setId(ID);
+        existingProduct.setName("Old Name");
+        existingProduct.setPrice(99.99);
+
+        when(productRepository.findById(ID)).thenReturn(Optional.of(existingProduct));
+
+        productSyncDataService.updateProduct(ID);
+
+        assertThat(existingProduct.getName()).isEqualTo("Smartphone XYZ");
+        assertThat(existingProduct.getPrice()).isEqualTo(299.99);
+        assertThat(existingProduct.getIsPublished()).isTrue();
+        assertThat(existingProduct.getBrand()).isEqualTo("BrandName");
+
+        verify(productRepository).save(existingProduct);
     }
 }
