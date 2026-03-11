@@ -204,7 +204,8 @@ pipeline {
                             return
                         }
 
-                        def xml = new XmlSlurper(false, false).parseText(readFile(reportPath))
+                        // Use default XmlSlurper constructor so it is allowed in Jenkins sandbox
+                        def xml = new XmlSlurper().parseText(readFile(reportPath))
                         def lineCounter = xml.counter.find { it.@type?.toString() == 'LINE' }
                         if (!lineCounter) {
                             failures << "${m}: LINE counter not found in jacoco.xml"
