@@ -4,6 +4,11 @@ pipeline {
     environment {
         MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository'
         DEFAULT_BASE_BRANCH = 'main'
+        // Quality gates
+        COVERAGE_MIN_LINE = '0.70'
+        // Tooling defaults (can be overridden at job level)
+        SONARQUBE_ENV = 'SonarQube'
+        SNYK_TOKEN_CRED_ID = 'snyk-token'
     }
 
     tools {
@@ -19,6 +24,21 @@ pipeline {
     stages {
         stage('Checkout') {
             steps { checkout scm }
+        }
+
+        stage('Gitleaks (secrets scan)') {
+            steps {
+                script {
+                    // Prefer Dockerized gitleaks to avoid agent setup drift
+                    // If Docker isn't available, this stage will fail and surface the issue.
+                    sh """
+                        docker run --rm \
+                          -v "\${PWD}:/repo" -w /repo \
+                          zricethezav/gitleaks:latest \
+                          detect --source=/repo --redact --verbose
+                    """.stripIndent()
+                }
+            }
         }
 
         stage('Detect changed modules') {
@@ -92,17 +112,17 @@ pipeline {
         stage('Test impacted modules') {
             when { expression { return env.IMPACTED_MODULES?.trim() } }
             steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    script {
-                        def mods = env.IMPACTED_MODULES.split(',') as List
-                        def pl = mods.join(',')
-                        sh "mvn -B test jacoco:report -pl ${pl} -am"
-                    }
+                script {
+                    def mods = env.IMPACTED_MODULES.split(',') as List
+                    def pl = mods.join(',')
+                    // Ensure JaCoCo reports are generated even when tests fail
+                    sh "mvn -B test jacoco:report -pl ${pl} -am -Dmaven.test.failure.ignore=true"
                 }
             }
             post {
                 always {
-                    junit testResults: '**/target/surefire-reports/TEST-*.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true
+                    // Mark build UNSTABLE if tests failed, but keep pipeline running
+                    junit testResults: '**/target/surefire-reports/TEST-*.xml', allowEmptyResults: true
 
                     script {
                         def mods = (env.IMPACTED_MODULES?.trim() ? env.IMPACTED_MODULES.split(',') : []) as List
@@ -124,6 +144,85 @@ pipeline {
                                 reportTitles: "Code Coverage Report (${m})"
                             ])
                         }
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube (code quality)') {
+            when { expression { return env.IMPACTED_MODULES?.trim() } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        def mods = env.IMPACTED_MODULES.split(',') as List
+                        def pl = mods.join(',')
+                        withSonarQubeEnv(env.SONARQUBE_ENV) {
+                            sh """
+                                mvn -B sonar:sonar \
+                                  -pl ${pl} -am \
+                                  -Dsonar.projectKey=${env.JOB_NAME?.replaceAll('[^A-Za-z0-9_.:-]', '_')} \
+                                  -Dsonar.projectName=${env.JOB_NAME}
+                            """.stripIndent()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Snyk (dependency vulnerabilities)') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
+                            // Use Dockerized snyk-cli; requires Docker on agent.
+                            sh """
+                                docker run --rm \
+                                  -e SNYK_TOKEN="\${SNYK_TOKEN}" \
+                                  -v "\${PWD}:/project" -w /project \
+                                  snyk/snyk:docker \
+                                  snyk test --all-projects
+                            """.stripIndent()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Coverage gate (> 70%)') {
+            when { expression { return env.IMPACTED_MODULES?.trim() } }
+            steps {
+                script {
+                    def minLine = (env.COVERAGE_MIN_LINE ?: '0.70') as BigDecimal
+                    def mods = env.IMPACTED_MODULES.split(',') as List
+
+                    def failures = []
+                    mods.each { m ->
+                        def reportPath = "${m}/target/site/jacoco/jacoco.xml"
+                        if (!fileExists(reportPath)) {
+                            failures << "${m}: missing ${reportPath}"
+                            return
+                        }
+
+                        def xml = new XmlSlurper(false, false).parseText(readFile(reportPath))
+                        def lineCounter = xml.counter.find { it.@type?.toString() == 'LINE' }
+                        if (!lineCounter) {
+                            failures << "${m}: LINE counter not found in jacoco.xml"
+                            return
+                        }
+
+                        def missed = (lineCounter.@missed?.toString() ?: '0') as BigDecimal
+                        def covered = (lineCounter.@covered?.toString() ?: '0') as BigDecimal
+                        def total = missed + covered
+                        def ratio = total > 0 ? (covered / total) : 0
+
+                        echo "Coverage (LINE) ${m}: ${(ratio * 100).setScale(2, java.math.RoundingMode.HALF_UP)}%"
+                        if (ratio <= minLine) {
+                            failures << "${m}: ${(ratio * 100).setScale(2, java.math.RoundingMode.HALF_UP)}% <= ${(minLine * 100).setScale(0, java.math.RoundingMode.HALF_UP)}%"
+                        }
+                    }
+
+                    if (!failures.isEmpty()) {
+                        error "Coverage gate failed (LINE must be > ${(minLine * 100).setScale(0, java.math.RoundingMode.HALF_UP)}%).\\n- " + failures.join("\\n- ")
                     }
                 }
             }
