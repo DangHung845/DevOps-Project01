@@ -122,7 +122,7 @@ pipeline {
             post {
                 always {
                     // Publish test results - don't mark unstable on test failures
-                    // Overall build success depends on coverage gate, not test count.
+                    // Overall build success depends on coverage gate, not test count
                     catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
                         junit testResults: '**/target/surefire-reports/TEST-*.xml', allowEmptyResults: true
                     }
