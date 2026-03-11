@@ -160,8 +160,9 @@ pipeline {
                             sh """
                                 mvn -B sonar:sonar \
                                   -pl ${pl} -am \
-                                  -Dsonar.projectKey=${env.JOB_NAME?.replaceAll('[^A-Za-z0-9_.:-]', '_')} \
-                                  -Dsonar.projectName=${env.JOB_NAME}
+                                  -Dsonar.organization=devops-org-newnol \
+                                  -Dsonar.projectKey=devops-org-newnol_devops-org-newnol \
+                                  -Dsonar.projectName="devops-org-newnol"
                             """.stripIndent()
                         }
                     }
