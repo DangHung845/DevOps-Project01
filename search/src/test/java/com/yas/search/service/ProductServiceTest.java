@@ -1,6 +1,7 @@
 package com.yas.search.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -273,6 +274,258 @@ class ProductServiceTest {
         assertNotNull(result);
         assertEquals(1, result.products().size());
         assertEquals(12, result.pageSize());
+    }
+
+    @Test
+    void testFindProductAdvance_whenMultipleProducts_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getMultipleProductSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(0);
+        when(productPage.getTotalElements()).thenReturn(3L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(1);
+        when(productPage.isLast()).thenReturn(true);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "product", 0, 10, null, null, null, null, null, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(3, result.products().size());
+        assertEquals(0, result.pageNo());
+        assertEquals(3, result.totalElements());
+    }
+
+    @Test
+    void testFindProductAdvance_whenSecondPage_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(1);
+        when(productPage.getTotalElements()).thenReturn(25L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(3);
+        when(productPage.isLast()).thenReturn(false);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "test", 1, 10, null, null, null, null, null, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(1, result.pageNo());
+        assertEquals(25, result.totalElements());
+        assertEquals(3, result.totalPages());
+        assertFalse(result.isLast());
+    }
+
+    @Test
+    void testFindProductAdvance_whenOnlyMinPrice_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(0);
+        when(productPage.getTotalElements()).thenReturn(1L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(1);
+        when(productPage.isLast()).thenReturn(true);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "test", 0, 10, null, null, null, 50.0, null, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(1, result.products().size());
+
+        verify(elasticsearchOperations).search(any(NativeQuery.class), eq(Product.class));
+    }
+
+    @Test
+    void testFindProductAdvance_whenOnlyMaxPrice_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(0);
+        when(productPage.getTotalElements()).thenReturn(1L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(1);
+        when(productPage.isLast()).thenReturn(true);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "test", 0, 10, null, null, null, null, 150.0, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(1, result.products().size());
+
+        verify(elasticsearchOperations).search(any(NativeQuery.class), eq(Product.class));
+    }
+
+    @Test
+    void testFindProductAdvance_whenBrandFilter_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(0);
+        when(productPage.getTotalElements()).thenReturn(1L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(1);
+        when(productPage.isLast()).thenReturn(true);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "test", 0, 10, "Samsung,LG", null, null, null, null, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(1, result.products().size());
+
+        verify(elasticsearchOperations).search(any(NativeQuery.class), eq(Product.class));
+    }
+
+    @Test
+    void testFindProductAdvance_whenCategoryFilter_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(0);
+        when(productPage.getTotalElements()).thenReturn(1L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(1);
+        when(productPage.isLast()).thenReturn(true);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "test", 0, 10, null, "Electronics,Phones", null, null, null, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(1, result.products().size());
+
+        verify(elasticsearchOperations).search(any(NativeQuery.class), eq(Product.class));
+    }
+
+    @Test
+    void testFindProductAdvance_whenAttributeFilter_ReturnProductListGetVm() {
+
+        SearchHits<Product> searchHits = getSearchHits();
+
+        SearchPage<Product> productPage = mock(SearchPage.class);
+        when(productPage.getNumber()).thenReturn(0);
+        when(productPage.getTotalElements()).thenReturn(1L);
+        when(productPage.getSize()).thenReturn(10);
+        when(productPage.getTotalPages()).thenReturn(1);
+        when(productPage.isLast()).thenReturn(true);
+
+        when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
+
+        ProductCriteriaDto criteriaDto = new ProductCriteriaDto(
+            "test", 0, 10, null, null, "Color:Black,Size:Large", null, null, SortType.DEFAULT);
+        ProductListGetVm result = productService.findProductAdvance(criteriaDto);
+
+        assertNotNull(result);
+        assertEquals(1, result.products().size());
+
+        verify(elasticsearchOperations).search(any(NativeQuery.class), eq(Product.class));
+    }
+
+    private static SearchHits<Product> getMultipleProductSearchHits() {
+        List<SearchHit<Product>> hits = new ArrayList<>();
+        
+        for (int i = 1; i <= 3; i++) {
+            Product product = Product.builder()
+                .id((long) i)
+                .name("Test Product " + i)
+                .slug("test-product-" + i)
+                .price(20.0 * i)
+                .isPublished(true)
+                .isVisibleIndividually(true)
+                .isAllowedToOrder(true)
+                .isFeatured(i % 2 == 0)
+                .thumbnailMediaId(100L + i)
+                .categories(List.of("Category" + i))
+                .attributes(List.of("Attribute" + i))
+                .createdOn(ZonedDateTime.now())
+                .build();
+
+            SearchHit<Product> searchHit = new SearchHit<>(
+                "products",
+                String.valueOf(i),
+                null,
+                1.0f,
+                null,
+                new HashMap<>(),
+                new HashMap<>(),
+                null,
+                null,
+                new ArrayList<>(),
+                product
+            );
+            hits.add(searchHit);
+        }
+
+        return new SearchHits<>() {
+            @Override
+            public @NotNull SearchHit<Product> getSearchHit(int index) {
+                return hits.get(index);
+            }
+
+            @Override
+            public AggregationsContainer<?> getAggregations() {
+                return null;
+            }
+
+            @Override
+            public float getMaxScore() {
+                return 1;
+            }
+
+            @Override
+            public @NotNull List<SearchHit<Product>> getSearchHits() {
+                return hits;
+            }
+
+            @Override
+            public long getTotalHits() {
+                return 3;
+            }
+
+            @Override
+            public @NotNull TotalHitsRelation getTotalHitsRelation() {
+                return TotalHitsRelation.EQUAL_TO;
+            }
+
+            @Override
+            public Suggest getSuggest() {
+                return null;
+            }
+
+            @Override
+            public String getPointInTimeId() {
+                return "";
+            }
+
+            @Override
+            public SearchShardStatistics getSearchShardStatistics() {
+                return null;
+            }
+        };
     }
 
     private static SearchHits<Product> getSearchHits() {

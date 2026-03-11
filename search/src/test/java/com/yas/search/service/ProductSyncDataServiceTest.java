@@ -278,4 +278,135 @@ class ProductSyncDataServiceTest {
 
         verify(productRepository).save(existingProduct);
     }
+
+    @Test
+    void testCreateProduct_withMultipleCategories_createsProductCorrectly() {
+
+        final Long productId = 2L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Laptop Pro",
+                "laptop-pro",
+                1299.99,
+                true,
+                true,
+                true,
+                true,
+                789L,
+                "Dell",
+                List.of("Electronics", "Computers", "Laptops"),
+                List.of("CPU: Intel i7", "RAM: 16GB", "Storage: 512GB SSD")
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getId()).isEqualTo(productId);
+        assertThat(actual.getName()).isEqualTo("Laptop Pro");
+        assertThat(actual.getCategories()).hasSize(3);
+        assertThat(actual.getBrand()).isEqualTo("Dell");
+    }
+
+    @Test
+    void testDeleteProduct_whenCalledMultipleTimes_deletesEachProduct() {
+        Long id1 = 1L;
+        Long id2 = 2L;
+
+        when(productRepository.existsById(id1)).thenReturn(true);
+        when(productRepository.existsById(id2)).thenReturn(true);
+
+        productSyncDataService.deleteProduct(id1);
+        productSyncDataService.deleteProduct(id2);
+
+        verify(productRepository).deleteById(id1);
+        verify(productRepository).deleteById(id2);
+    }
+
+    @Test
+    void testGetProductEsDetailById_returnsCompleteProductDetails() {
+
+        final Long productId = 3L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        ProductEsDetailVm expectedProduct = new ProductEsDetailVm(
+            productId,
+            "Camera DSLR",
+            "camera-dslr",
+            899.99,
+            true,
+            true,
+            false,
+            false,
+            321L,
+            "Canon",
+            List.of("Photography", "Cameras"),
+            List.of("Resolution: 24MP", "Type: DSLR")
+        );
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class)).thenReturn(expectedProduct);
+
+        ProductEsDetailVm result = productSyncDataService.getProductEsDetailById(productId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.name()).isEqualTo("Camera DSLR");
+        assertThat(result.brand()).isEqualTo("Canon");
+        assertThat(result.isAllowedToOrder()).isFalse();
+    }
+
+    @Test
+    void testUpdateProduct_whenProductChangesFromPublishedToUnpublished_deletesProduct() {
+
+        mockProductThumbnailVmsByUri();
+        Product existingProduct = new Product();
+        existingProduct.setId(ID);
+        existingProduct.setName("Published Product");
+        existingProduct.setIsPublished(true);
+
+        when(productRepository.findById(ID)).thenReturn(Optional.of(existingProduct));
+
+        // Mock the response with an unpublished product
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(ID).toUri();
+
+        ProductEsDetailVm unpublishedProduct = new ProductEsDetailVm(
+            ID,
+            "Unpublished Product",
+            "unpublished",
+            0.0,
+            false,
+            true,
+            true,
+            false,
+            0L,
+            "Brand",
+            List.of(),
+            List.of()
+        );
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class)).thenReturn(unpublishedProduct);
+
+        productSyncDataService.updateProduct(ID);
+
+        verify(productRepository).deleteById(ID);
+    }
 }
