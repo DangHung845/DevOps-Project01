@@ -292,3 +292,5 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.productNames").isArray())
             .andExpect(jsonPath("$.productNames.length()").value(0));
     }
+
+}
