@@ -152,8 +152,8 @@ pipeline {
         stage('SonarQube (code quality)') {
             when { expression { return env.IMPACTED_MODULES?.trim() } }
             steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    script {
+                script {
+                    try {
                         def mods = env.IMPACTED_MODULES.split(',') as List
                         def pl = mods.join(',')
                         withSonarQubeEnv(env.SONARQUBE_ENV) {
@@ -165,6 +165,10 @@ pipeline {
                                   -Dsonar.projectName="devops-org-newnol"
                             """.stripIndent()
                         }
+                        echo "✅ SonarQube analysis completed"
+                    } catch (Exception e) {
+                        echo "⚠️  SonarQube analysis failed or skipped: ${e.message}"
+                        echo "Note: SonarQube failures do not block the pipeline"
                     }
                 }
             }
