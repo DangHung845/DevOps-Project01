@@ -293,4 +293,375 @@ class ProductControllerTest {
             .andExpect(jsonPath("$.productNames.length()").value(0));
     }
 
+    @Test
+    void testFindProductAdvance_withCategoryFilter_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            5L,
+            "Electronics Item",
+            "electronics-item",
+            100L,
+            450.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "electronics")
+                .param("page", "0")
+                .param("size", "12")
+                .param("category", "Electronics")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].name").value("Electronics Item"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void testFindProductAdvance_withAttributeFilter_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            6L,
+            "Black Phone",
+            "black-phone",
+            101L,
+            350.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "phone")
+                .param("page", "0")
+                .param("size", "12")
+                .param("attribute", "Color:Black")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].name").value("Black Phone"));
+    }
+
+    @Test
+    void testFindProductAdvance_withAllFilters_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            7L,
+            "Samsung Black Phone",
+            "samsung-black-phone",
+            102L,
+            450.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "phone")
+                .param("page", "0")
+                .param("size", "12")
+                .param("brand", "Samsung")
+                .param("category", "Electronics")
+                .param("attribute", "Color:Black")
+                .param("minPrice", "400")
+                .param("maxPrice", "500")
+                .param("sortType", "PRICE_ASC")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].name").value("Samsung Black Phone"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void testFindProductAdvance_withLargePageSize_thenReturnProductListGetVm() throws Exception {
+
+        List<ProductGetVm> products = List.of(
+            new ProductGetVm(1L, "Product 1", "product-1", 100L, 100.0, true, true, true, false, ZonedDateTime.now()),
+            new ProductGetVm(2L, "Product 2", "product-2", 101L, 200.0, true, true, true, false, ZonedDateTime.now()),
+            new ProductGetVm(3L, "Product 3", "product-3", 102L, 300.0, true, true, true, false, ZonedDateTime.now())
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            products, 0, 100, 3, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "product")
+                .param("page", "0")
+                .param("size", "100")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.pageSize").value(100))
+            .andExpect(jsonPath("$.products.length()").value(3));
+    }
+
+    @Test
+    void testFindProductAdvance_withMultipleBrands_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            8L,
+            "Multi-brand Product",
+            "multi-brand-product",
+            103L,
+            250.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "product")
+                .param("page", "0")
+                .param("size", "12")
+                .param("brand", "Samsung,Apple,LG")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].id").value(8L));
+    }
+
+    @Test
+    void testFindProductAdvance_withSpecialCharactersInKeyword_thenReturnProductListGetVm() throws Exception {
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(), 0, 12, 0, 0, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "@#$%^&*()")
+                .param("page", "0")
+                .param("size", "12")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void testFindProductAdvance_withEmptyKeyword_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            9L,
+            "Any Product",
+            "any-product",
+            104L,
+            150.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "")
+                .param("page", "0")
+                .param("size", "12")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products.length()").value(1));
+    }
+
+    @Test
+    void testFindProductAdvance_verifyAggregations_thenReturnAggregationsData() throws Exception {
+
+        Map<String, Map<String, Long>> aggregations = Map.of(
+            "brands", Map.of("Samsung", 5L, "Apple", 3L, "LG", 2L),
+            "categories", Map.of("Electronics", 8L, "Phones", 7L),
+            "attributes", Map.of("Color:Black", 4L, "Color:White", 3L)
+        );
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            1L,
+            "Product",
+            "product",
+            100L,
+            200.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, aggregations
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "product")
+                .param("page", "0")
+                .param("size", "12")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.aggregations.brands").exists())
+            .andExpect(jsonPath("$.aggregations.categories").exists())
+            .andExpect(jsonPath("$.aggregations.attributes").exists());
+    }
+
+    @Test
+    void testFindProductAdvance_sortByDefault_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            1L,
+            "Product",
+            "product",
+            100L,
+            100.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "product")
+                .param("page", "0")
+                .param("size", "12")
+                .param("sortType", "DEFAULT")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].name").value("Product"));
+    }
+
+    @Test
+    void testProductSearchAutoComplete_withLongKeyword_thenReturnProductNameList() throws Exception {
+
+        ProductNameListVm mockResponse = new ProductNameListVm(
+            List.of(new ProductNameGetVm("VeryLongProductNameWithManyCharactersHere"))
+        );
+
+        when(productService.autoCompleteProductName(anyString())).thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/search_suggest")
+                .param("keyword", "VeryLongProductNameWithManyCharactersHere")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.productNames[0].name").value("VeryLongProductNameWithManyCharactersHere"));
+    }
+
+    @Test
+    void testFindProductAdvance_withOnlyMinPrice_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            1L,
+            "Expensive Product",
+            "expensive-product",
+            100L,
+            500.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "product")
+                .param("page", "0")
+                .param("size", "12")
+                .param("minPrice", "400")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].price").value(500.0));
+    }
+
+    @Test
+    void testFindProductAdvance_withOnlyMaxPrice_thenReturnProductListGetVm() throws Exception {
+
+        ProductGetVm productGetVm = new ProductGetVm(
+            1L,
+            "Budget Product",
+            "budget-product",
+            100L,
+            100.0,
+            true,
+            true,
+            true,
+            false,
+            ZonedDateTime.now()
+        );
+
+        ProductListGetVm mockResponse = new ProductListGetVm(
+            List.of(productGetVm), 0, 12, 1, 1, true, Map.of()
+        );
+
+        when(productService.findProductAdvance(any(ProductCriteriaDto.class)))
+            .thenReturn(mockResponse);
+
+        mockMvc.perform(get("/storefront/catalog-search")
+                .param("keyword", "product")
+                .param("page", "0")
+                .param("size", "12")
+                .param("maxPrice", "200")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.products[0].price").value(100.0));
+    }
+
 }

@@ -409,4 +409,274 @@ class ProductSyncDataServiceTest {
 
         verify(productRepository).deleteById(ID);
     }
+
+    @Test
+    void testCreateProduct_withEmptyCategoriesAndAttributes_createsProductCorrectly() {
+
+        final Long productId = 4L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Simple Product",
+                "simple-product",
+                50.0,
+                true,
+                true,
+                true,
+                false,
+                0L,
+                "NoName",
+                List.of(),
+                List.of()
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getCategories()).isEmpty();
+        assertThat(actual.getAttributes()).isEmpty();
+        assertThat(actual.getName()).isEqualTo("Simple Product");
+    }
+
+    @Test
+    void testCreateProduct_withFeaturedProduct_createsWithFeaturedFlag() {
+
+        final Long productId = 5L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Featured Product",
+                "featured-product",
+                199.99,
+                true,
+                true,
+                true,
+                true,
+                500L,
+                "FeaturedBrand",
+                List.of("Featured"),
+                List.of("Special")
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getIsFeatured()).isTrue();
+    }
+
+    @Test
+    void testCreateProduct_withNotVisibleIndividually_createsProduct() {
+
+        final Long productId = 6L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Bundle Product",
+                "bundle-product",
+                499.99,
+                true,
+                false,
+                true,
+                false,
+                600L,
+                "BundleBrand",
+                List.of("Bundle"),
+                List.of()
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getIsVisibleIndividually()).isFalse();
+    }
+
+    @Test
+    void testCreateProduct_withNotAllowedToOrder_createsProduct() {
+
+        final Long productId = 7L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Out of Stock Product",
+                "out-of-stock",
+                0.0,
+                true,
+                true,
+                false,
+                false,
+                0L,
+                "OutOfStockBrand",
+                List.of("OutOfStock"),
+                List.of()
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getIsAllowedToOrder()).isFalse();
+    }
+
+    @Test
+    void testUpdateProduct_withVeryHighPrice_updatesCorrectly() {
+
+        final Long productId = 8L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        Product existingProduct = new Product();
+        existingProduct.setId(productId);
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(existingProduct));
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Luxury Product",
+                "luxury-product",
+                99999.99,
+                true,
+                true,
+                true,
+                true,
+                999L,
+                "LuxuryBrand",
+                List.of("Luxury", "Premium"),
+                List.of("Materials: Premium")
+            ));
+
+        productSyncDataService.updateProduct(productId);
+
+        assertThat(existingProduct.getPrice()).isEqualTo(99999.99);
+        assertThat(existingProduct.getIsFeatured()).isTrue();
+        verify(productRepository).save(existingProduct);
+    }
+
+    @Test
+    void testDeleteProduct_withLargeProductId_deletesSuccessfully() {
+
+        Long largeId = Long.MAX_VALUE;
+        when(productRepository.existsById(largeId)).thenReturn(true);
+
+        productSyncDataService.deleteProduct(largeId);
+
+        verify(productRepository).deleteById(largeId);
+    }
+
+    @Test
+    void testCreateProduct_withLongProductName_createsProductCorrectly() {
+
+        final Long productId = 9L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        String longName = "A".repeat(500); // Very long product name
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                longName,
+                "long-name-product",
+                99.99,
+                true,
+                true,
+                true,
+                false,
+                100L,
+                "Brand",
+                List.of("Category"),
+                List.of()
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getName()).hasSize(500);
+    }
+
+    @Test
+    void testCreateProduct_withSpecialCharactersInName_createsProductCorrectly() {
+
+        final Long productId = 10L;
+        final URI url = UriComponentsBuilder.fromHttpUrl(PRODUCT_URL)
+            .path("/storefront/products-es/{id}").buildAndExpand(productId).toUri();
+
+        when(serviceUrlConfig.product()).thenReturn(PRODUCT_URL);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ProductEsDetailVm.class))
+            .thenReturn(new ProductEsDetailVm(
+                productId,
+                "Product @#$% & Special™",
+                "product-special-chars",
+                150.0,
+                true,
+                true,
+                true,
+                false,
+                200L,
+                "Brand®",
+                List.of("Category™"),
+                List.of("Property: Value©")
+            ));
+
+        productSyncDataService.createProduct(productId);
+
+        ArgumentCaptor<Product> argumentCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(argumentCaptor.capture());
+        Product actual = argumentCaptor.getValue();
+
+        assertThat(actual.getName()).contains("@#$%");
+    }
+
 }
