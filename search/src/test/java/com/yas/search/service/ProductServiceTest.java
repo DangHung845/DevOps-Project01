@@ -303,14 +303,7 @@ class ProductServiceTest {
     @Test
     void testFindProductAdvance_whenSecondPage_ReturnProductListGetVm() {
 
-        SearchHits<Product> searchHits = getSearchHits();
-
-        SearchPage<Product> productPage = mock(SearchPage.class);
-        when(productPage.getNumber()).thenReturn(1);
-        when(productPage.getTotalElements()).thenReturn(25L);
-        when(productPage.getSize()).thenReturn(10);
-        when(productPage.getTotalPages()).thenReturn(3);
-        when(productPage.isLast()).thenReturn(false);
+        SearchHits<Product> searchHits = getSearchHitsWithTotalHits(25L);
 
         when(elasticsearchOperations.search(any(NativeQuery.class), eq(Product.class))).thenReturn(searchHits);
 
@@ -658,4 +651,82 @@ class ProductServiceTest {
         };
     }
 
-}
+    private static SearchHits<Product> getSearchHitsWithTotalHits(long totalHits) {
+
+        Product product = Product.builder()
+            .id(1L)
+            .name("Test Product")
+            .slug("test-product")
+            .price(20.0)
+            .isPublished(true)
+            .isVisibleIndividually(true)
+            .isAllowedToOrder(true)
+            .isFeatured(true)
+            .thumbnailMediaId(123L)
+            .categories(List.of("testCategory"))
+            .attributes(List.of("testAttribute"))
+            .createdOn(ZonedDateTime.now())
+            .build();
+
+        SearchHit<Product> searchHit = new SearchHit<>(
+            "products",
+            "1",
+            null,
+            1.0f,
+            null,
+            new HashMap<>(),
+            new HashMap<>(),
+            null,
+            null,
+            new ArrayList<>(),
+            product
+        );
+
+        return new SearchHits<>() {
+
+            @Override
+            public @NotNull SearchHit<Product> getSearchHit(int index) {
+                return searchHit;
+            }
+
+            @Override
+            public AggregationsContainer<?> getAggregations() {
+                return null;
+            }
+
+            @Override
+            public float getMaxScore() {
+                return 1;
+            }
+
+            @Override
+            public @NotNull List<SearchHit<Product>> getSearchHits() {
+                return List.of(searchHit);
+            }
+
+            @Override
+            public long getTotalHits() {
+                return totalHits;
+            }
+
+            @Override
+            public @NotNull TotalHitsRelation getTotalHitsRelation() {
+                return TotalHitsRelation.EQUAL_TO;
+            }
+
+            @Override
+            public Suggest getSuggest() {
+                return null;
+            }
+
+            @Override
+            public String getPointInTimeId() {
+                return "";
+            }
+
+            @Override
+            public SearchShardStatistics getSearchShardStatistics() {
+                return null;
+            }
+        };
+    }
