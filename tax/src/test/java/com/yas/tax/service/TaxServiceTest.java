@@ -213,8 +213,8 @@ public class TaxServiceTest {
         TaxRateListGetVm result = taxRateService.getPageableTaxRates(0, 10);
         
         assertThat(result).isNotNull();
-        assertThat(result.getNumber()).isEqualTo(0);
-        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.pageNo()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(10);
         verify(taxRateRepository, times(1)).findAll(any(Pageable.class));
     }
 
@@ -230,7 +230,7 @@ public class TaxServiceTest {
         TaxRateListGetVm result = taxRateService.getPageableTaxRates(0, 10);
         
         assertThat(result).isNotNull();
-        assertThat(result.getCountItem()).isEqualTo(0);
+        assertThat(result.totalElements()).isEqualTo(0);
     }
 
     @Test
@@ -407,10 +407,10 @@ public class TaxServiceTest {
         TaxClassListGetVm result = taxClassService.getPageableTaxClasses(0, 10);
         
         assertThat(result).isNotNull();
-        assertThat(result.getNumber()).isEqualTo(0);
-        assertThat(result.getSize()).isEqualTo(10);
-        assertThat(result.getCountItem()).isEqualTo(1);
-        assertThat(result.getTotalPages()).isEqualTo(1);
+        assertThat(result.pageNo()).isEqualTo(0);
+        assertThat(result.pageSize()).isEqualTo(10);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.totalPages()).isEqualTo(1);
         verify(taxClassRepository, times(1)).findAll(any(Pageable.class));
     }
 
@@ -424,8 +424,8 @@ public class TaxServiceTest {
         TaxClassListGetVm result = taxClassService.getPageableTaxClasses(0, 10);
         
         assertThat(result).isNotNull();
-        assertThat(result.getCountItem()).isEqualTo(0);
-        assertThat(result.getTotalPages()).isEqualTo(0);
+        assertThat(result.totalElements()).isEqualTo(0);
+        assertThat(result.totalPages()).isEqualTo(0);
     }
 
     @Test
@@ -443,7 +443,7 @@ public class TaxServiceTest {
         TaxClassListGetVm result = taxClassService.getPageableTaxClasses(0, 10);
         
         assertThat(result).isNotNull();
-        assertThat(result.getCountItem()).isEqualTo(20);
-        assertThat(result.getTaxClasses()).hasSize(2);
+        assertThat(result.totalElements()).isEqualTo(20);
+        assertThat(result.taxClassContent()).hasSize(2);
     }
 }
