@@ -16,6 +16,8 @@ import static org.mockito.Mockito.when;
 import com.yas.commonlibrary.exception.DuplicatedException;
 import com.yas.commonlibrary.exception.NotFoundException;
 import com.yas.tax.constants.MessageCode;
+import com.yas.tax.controller.TaxClassController;
+import com.yas.tax.controller.TaxRateController;
 import com.yas.tax.model.TaxClass;
 import com.yas.tax.model.TaxRate;
 import com.yas.tax.repository.TaxClassRepository;
@@ -28,12 +30,14 @@ import com.yas.tax.viewmodel.taxrate.TaxRateGetDetailVm;
 import com.yas.tax.viewmodel.taxrate.TaxRateListGetVm;
 import com.yas.tax.viewmodel.taxrate.TaxRatePostVm;
 import com.yas.tax.viewmodel.taxrate.TaxRateVm;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import org.instancio.Instancio;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
@@ -41,8 +45,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.util.UriComponentsBuilder;
 
-@SpringBootTest(classes = {TaxRateService.class, TaxClassService.class})
+@SpringBootTest(classes = {TaxRateService.class, TaxClassService.class, TaxRateController.class, TaxClassController.class})
+@AutoConfigureMockMvc
+@SpringBootTest(classes = {TaxRateService.class, TaxClassService.class, TaxRateController.class, TaxClassController.class})
+@AutoConfigureMockMvc
 public class TaxServiceTest {
     
     @MockBean
@@ -57,6 +68,15 @@ public class TaxServiceTest {
     
     @Autowired
     TaxClassService taxClassService;
+    
+    @Autowired
+    TaxRateController taxRateController;
+    
+    @Autowired
+    TaxClassController taxClassController;
+    
+    @Autowired
+    MockMvc mockMvc;
 
     TaxRate taxRate;
     TaxClass taxClass;
@@ -71,6 +91,9 @@ public class TaxServiceTest {
             .set(field("taxClass"), taxClass)
             .set(field("id"), 1L)
             .set(field("rate"), 10.0)
+            .set(field("countryId"), 1L)
+            .set(field("stateOrProvinceId"), 1L)
+            .set(field("zipCode"), "12345")
             .create();
         
         lenient().when(taxRateRepository.findAll()).thenReturn(List.of(taxRate));
@@ -234,6 +257,49 @@ public class TaxServiceTest {
     }
 
     @Test
+    void testGetPageableTaxRates_withMultipleTaxRates() {
+        TaxRate taxRate2 = Instancio.of(TaxRate.class)
+            .set(field("taxClass"), taxClass)
+            .set(field("id"), 2L)
+            .set(field("stateOrProvinceId"), 2L)
+            .create();
+        
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaxRate> page = new PageImpl<>(List.of(taxRate, taxRate2), pageable, 2);
+        
+        StateOrProvinceAndCountryGetNameVm locationVm1 = new StateOrProvinceAndCountryGetNameVm(
+            taxRate.getStateOrProvinceId(), "State1", "Country"
+        );
+        StateOrProvinceAndCountryGetNameVm locationVm2 = new StateOrProvinceAndCountryGetNameVm(
+            taxRate2.getStateOrProvinceId(), "State2", "Country"
+        );
+        
+        when(taxRateRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(locationService.getStateOrProvinceAndCountryNames(any(List.class)))
+            .thenReturn(List.of(locationVm1, locationVm2));
+        
+        TaxRateListGetVm result = taxRateService.getPageableTaxRates(0, 10);
+        
+        assertThat(result).isNotNull();
+        assertThat(result.totalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void testGetPageableTaxRates_withDifferentPageNumbers() {
+        Pageable pageable = PageRequest.of(2, 10);
+        Page<TaxRate> page = new PageImpl<>(List.of(taxRate), pageable, 25);
+        
+        when(taxRateRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(locationService.getStateOrProvinceAndCountryNames(any(List.class)))
+            .thenReturn(List.of());
+        
+        TaxRateListGetVm result = taxRateService.getPageableTaxRates(2, 10);
+        
+        assertThat(result).isNotNull();
+        assertThat(result.pageNo()).isEqualTo(2);
+    }
+
+    @Test
     void testGetTaxPercent_shouldReturnValidTaxPercent() {
         when(taxRateRepository.getTaxPercent(1L, 2L, "12345", 1L))
             .thenReturn(10.5);
@@ -251,6 +317,16 @@ public class TaxServiceTest {
         double result = taxRateService.getTaxPercent(1L, 1L, 2L, "12345");
         
         assertThat(result).isEqualTo(0.0);
+    }
+
+    @Test
+    void testGetTaxPercent_withDifferentValues() {
+        when(taxRateRepository.getTaxPercent(5L, 10L, "99999", 3L))
+            .thenReturn(25.75);
+        
+        double result = taxRateService.getTaxPercent(3L, 5L, 10L, "99999");
+        
+        assertThat(result).isEqualTo(25.75);
     }
 
     @Test
@@ -278,6 +354,25 @@ public class TaxServiceTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    void testGetBulkTaxRate_withMultipleTaxClassIds() {
+        TaxRate taxRate2 = Instancio.of(TaxRate.class)
+            .set(field("taxClass"), taxClass)
+            .set(field("id"), 2L)
+            .create();
+        TaxRate taxRate3 = Instancio.of(TaxRate.class)
+            .set(field("taxClass"), taxClass)
+            .set(field("id"), 3L)
+            .create();
+        
+        when(taxRateRepository.getBatchTaxRates(1L, 2L, "12345", any()))
+            .thenReturn(List.of(taxRate, taxRate2, taxRate3));
+        
+        List<TaxRateVm> result = taxRateService.getBulkTaxRate(List.of(1L, 2L, 3L), 1L, 2L, "12345");
+        
+        assertThat(result).hasSize(3);
+    }
+
     // ============ TaxClassService Tests ============
 
     @Test
@@ -286,6 +381,20 @@ public class TaxServiceTest {
         
         assertThat(result).hasSize(1).contains(TaxClassVm.fromModel(taxClass));
         verify(taxClassRepository, times(1)).findAll(any(Sort.class));
+    }
+
+    @Test
+    void testFindAllTaxClasses_shouldHandleMultipleClasses() {
+        TaxClass taxClass2 = Instancio.of(TaxClass.class)
+            .set(field("id"), 2L)
+            .set(field("name"), "Premium Tax")
+            .create();
+        
+        when(taxClassRepository.findAll(any(Sort.class))).thenReturn(List.of(taxClass, taxClass2));
+        
+        List<TaxClassVm> result = taxClassService.findAllTaxClasses();
+        
+        assertThat(result).hasSize(2);
     }
 
     @Test
@@ -337,6 +446,21 @@ public class TaxServiceTest {
     }
 
     @Test
+    void testCreateTaxClass_withDifferentNames() {
+        TaxClassPostVm postVm = Instancio.of(TaxClassPostVm.class)
+            .set(field("name"), "Special Tax Class")
+            .create();
+        
+        when(taxClassRepository.existsByName("Special Tax Class")).thenReturn(false);
+        when(taxClassRepository.save(any(TaxClass.class))).thenReturn(taxClass);
+        
+        TaxClass result = taxClassService.create(postVm);
+        
+        assertThat(result).isNotNull();
+        verify(taxClassRepository).save(any(TaxClass.class));
+    }
+
+    @Test
     void testUpdateTaxClass_shouldUpdateSuccessfully() {
         TaxClassPostVm postVm = Instancio.of(TaxClassPostVm.class)
             .set(field("name"), "Updated Name")
@@ -375,6 +499,21 @@ public class TaxServiceTest {
         assertThatThrownBy(() -> taxClassService.update(postVm, 1L))
             .isInstanceOf(DuplicatedException.class)
             .hasMessageContaining(MessageCode.NAME_ALREADY_EXITED);
+    }
+
+    @Test
+    void testUpdateTaxClass_withSameName() {
+        TaxClassPostVm postVm = Instancio.of(TaxClassPostVm.class)
+            .set(field("name"), "Standard Tax")
+            .create();
+        
+        when(taxClassRepository.findById(1L)).thenReturn(Optional.of(taxClass));
+        when(taxClassRepository.existsByNameNotUpdatingTaxClass("Standard Tax", 1L)).thenReturn(false);
+        when(taxClassRepository.save(any(TaxClass.class))).thenReturn(taxClass);
+        
+        taxClassService.update(postVm, 1L);
+        
+        verify(taxClassRepository).save(any(TaxClass.class));
     }
 
     @Test
@@ -445,5 +584,177 @@ public class TaxServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.totalElements()).isEqualTo(20);
         assertThat(result.taxClassContent()).hasSize(2);
+    }
+
+    @Test
+    void testGetPageableTaxClasses_withLastPage() {
+        Pageable pageable = PageRequest.of(1, 10);
+        Page<TaxClass> page = new PageImpl<>(List.of(taxClass), pageable, 15);
+        
+        when(taxClassRepository.findAll(any(Pageable.class))).thenReturn(page);
+        
+        TaxClassListGetVm result = taxClassService.getPageableTaxClasses(1, 10);
+        
+        assertThat(result).isNotNull();
+        assertThat(result.pageNo()).isEqualTo(1);
+        assertThat(result.isLast()).isTrue();
+    }
+
+    @Test
+    void testGetPageableTaxClasses_withMiddlePage() {
+        Pageable pageable = PageRequest.of(2, 10);
+        Page<TaxClass> page = new PageImpl<>(List.of(taxClass), pageable, 50);
+        
+        when(taxClassRepository.findAll(any(Pageable.class))).thenReturn(page);
+        
+        TaxClassListGetVm result = taxClassService.getPageableTaxClasses(2, 10);
+        
+        assertThat(result).isNotNull();
+        assertThat(result.pageNo()).isEqualTo(2);
+        assertThat(result.isLast()).isFalse();
+    }
+
+    // ============ TaxRateController Tests ============
+
+    @Test
+    void testRateControllerGetPageableTaxRates() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaxRate> page = new PageImpl<>(List.of(taxRate), pageable, 1);
+        
+        when(taxRateRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(locationService.getStateOrProvinceAndCountryNames(any(List.class)))
+            .thenReturn(List.of(new StateOrProvinceAndCountryGetNameVm(1L, "State", "Country")));
+        
+        ResponseEntity<TaxRateListGetVm> response = taxRateController.getPageableTaxRates(0, 10);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void testRateControllerGetTaxRateById() {
+        when(taxRateRepository.findById(1L)).thenReturn(Optional.of(taxRate));
+        
+        ResponseEntity<TaxRateVm> response = taxRateController.getTaxRate(1L);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void testRateControllerCreateTaxRate() {
+        TaxRatePostVm postVm = Instancio.of(TaxRatePostVm.class)
+            .set(field("taxClassId"), 1L)
+            .create();
+        
+        when(taxClassRepository.existsById(1L)).thenReturn(true);
+        when(taxClassRepository.getReferenceById(1L)).thenReturn(taxClass);
+        when(taxRateRepository.save(any(TaxRate.class))).thenReturn(taxRate);
+        
+        ResponseEntity<TaxRateVm> response = taxRateController.createTaxRate(postVm, UriComponentsBuilder.newInstance());
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void testRateControllerUpdateTaxRate() {
+        TaxRatePostVm postVm = Instancio.of(TaxRatePostVm.class)
+            .set(field("taxClassId"), 1L)
+            .create();
+        
+        when(taxRateRepository.findById(1L)).thenReturn(Optional.of(taxRate));
+        when(taxClassRepository.existsById(1L)).thenReturn(true);
+        when(taxClassRepository.getReferenceById(1L)).thenReturn(taxClass);
+        when(taxRateRepository.save(any(TaxRate.class))).thenReturn(taxRate);
+        
+        ResponseEntity<Void> response = taxRateController.updateTaxRate(1L, postVm);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    void testRateControllerDeleteTaxRate() {
+        when(taxRateRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(taxRateRepository).deleteById(1L);
+        
+        ResponseEntity<Void> response = taxRateController.deleteTaxRate(1L);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    // ============ TaxClassController Tests ============
+
+    @Test
+    void testClassControllerGetPageableTaxClasses() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaxClass> page = new PageImpl<>(List.of(taxClass), pageable, 1);
+        
+        when(taxClassRepository.findAll(any(Pageable.class))).thenReturn(page);
+        
+        ResponseEntity<TaxClassListGetVm> response = taxClassController.getPageableTaxClasses(0, 10);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void testClassControllerGetAllTaxClasses() {
+        when(taxClassRepository.findAll(any(Sort.class))).thenReturn(List.of(taxClass));
+        
+        ResponseEntity<List<TaxClassVm>> response = taxClassController.listTaxClasses();
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+    }
+
+    @Test
+    void testClassControllerGetTaxClassById() {
+        when(taxClassRepository.findById(1L)).thenReturn(Optional.of(taxClass));
+        
+        ResponseEntity<TaxClassVm> response = taxClassController.getTaxClass(1L);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void testClassControllerCreateTaxClass() {
+        TaxClassPostVm postVm = Instancio.of(TaxClassPostVm.class)
+            .set(field("name"), "New Class")
+            .create();
+        
+        when(taxClassRepository.existsByName("New Class")).thenReturn(false);
+        when(taxClassRepository.save(any(TaxClass.class))).thenReturn(taxClass);
+        
+        ResponseEntity<TaxClassVm> response = taxClassController.createTaxClass(postVm, UriComponentsBuilder.newInstance());
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isNotNull();
+    }
+
+    @Test
+    void testClassControllerUpdateTaxClass() {
+        TaxClassPostVm postVm = Instancio.of(TaxClassPostVm.class)
+            .set(field("name"), "Updated Class")
+            .create();
+        
+        when(taxClassRepository.findById(1L)).thenReturn(Optional.of(taxClass));
+        when(taxClassRepository.existsByNameNotUpdatingTaxClass("Updated Class", 1L)).thenReturn(false);
+        when(taxClassRepository.save(any(TaxClass.class))).thenReturn(taxClass);
+        
+        ResponseEntity<Void> response = taxClassController.updateTaxClass(1L, postVm);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    void testClassControllerDeleteTaxClass() {
+        when(taxClassRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(taxClassRepository).deleteById(1L);
+        
+        ResponseEntity<Void> response = taxClassController.deleteTaxClass(1L);
+        
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
 }
