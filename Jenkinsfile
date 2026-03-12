@@ -166,9 +166,9 @@ pipeline {
                                   -Dsonar.projectName="devops-org-newnol"
                             """.stripIndent()
                         }
-                        echo "✅ SonarQube analysis completed"
+                        echo "SonarQube analysis completed"
                     } catch (Exception e) {
-                        echo "⚠️  SonarQube analysis failed or skipped: ${e.message}"
+                        echo "SonarQube analysis failed or skipped: ${e.message}"
                         echo "Note: SonarQube failures do not block the pipeline"
                     }
                 }
