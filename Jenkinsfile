@@ -159,16 +159,20 @@ pipeline {
               }
 
               sh """
-                set -euxo pipefail
-                mvn -B -DskipTests \
-                  org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
-                  -f ${m} \
-                  -Dsonar.login="$SONAR_TOKEN" \
-                  -Dsonar.host.url="${SONAR_HOST_URL}" \
-                  -Dsonar.organization="${SONAR_ORG}" \
-                  -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
-                  ${sonarExtra}
-              """
+                  set -euxo pipefail
+                
+                  # 1) ensure internal deps (ex: common-library) are installed locally
+                  mvn -B -DskipTests -pl ${m} -am install
+                
+                  # 2) sonar scan for module
+                  mvn -B -DskipTests -pl ${m} -am \
+                    org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
+                    -Dsonar.login="$SONAR_TOKEN" \
+                    -Dsonar.host.url="${SONAR_HOST_URL}" \
+                    -Dsonar.organization="${SONAR_ORG}" \
+                    -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
+                    ${sonarExtra}
+                """
             }
           }
         }
