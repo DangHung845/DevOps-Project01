@@ -245,4 +245,129 @@ public class StateOrProvinceServiceTest {
         assertEquals("STATE2", created.getCode());
         assertEquals(otherCountry.getId(), created.getCountry().getId());
     }
-} // nothing
+
+    @Test
+    void updateStateOrProvince_withTypeField_Success() {
+        generateTestData();
+        StateOrProvincePostVm stateOrProvincePostVm = StateOrProvincePostVm.builder()
+            .countryId(country.getId())
+            .name("state-typed")
+            .code("TYPED")
+            .type("province")
+            .build();
+        stateOrProvinceService.updateStateOrProvince(stateOrProvincePostVm, stateOrProvince1.getId());
+        StateOrProvinceVm vm = stateOrProvinceService.findById(stateOrProvince1.getId());
+        assertNotNull(vm);
+        assertEquals("state-typed", vm.name());
+        assertEquals("TYPED", vm.code());
+        assertEquals("province", vm.type());
+    }
+
+    @Test
+    void updateStateOrProvince_withSameName_Success() {
+        generateTestData();
+        StateOrProvincePostVm stateOrProvincePostVm = StateOrProvincePostVm.builder()
+            .countryId(country.getId())
+            .name("state-or-province-1")
+            .code("SAME")
+            .build();
+        stateOrProvinceService.updateStateOrProvince(stateOrProvincePostVm, stateOrProvince1.getId());
+        StateOrProvinceVm vm = stateOrProvinceService.findById(stateOrProvince1.getId());
+        assertNotNull(vm);
+        assertEquals("state-or-province-1", vm.name());
+        assertEquals("SAME", vm.code());
+    }
+
+    @Test
+    void getPageableStateOrProvinces_verifyAllPagingFields() {
+        generateTestData();
+        StateOrProvinceListGetVm result = stateOrProvinceService.getPageableStateOrProvinces(0, 1, country.getId());
+        assertNotNull(result);
+        assertEquals(0, result.pageNo());
+        assertEquals(1, result.pageSize());
+        assertEquals(2, result.totalElements());
+        assertEquals(2, result.totalPages());
+        org.junit.jupiter.api.Assertions.assertFalse(result.isLast());
+    }
+
+    @Test
+    void getPageableStateOrProvinces_lastPage_isLastTrue() {
+        generateTestData();
+        StateOrProvinceListGetVm result = stateOrProvinceService.getPageableStateOrProvinces(1, 1, country.getId());
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isLast());
+        assertEquals(1, result.stateOrProvinceContent().size());
+    }
+
+    @Test
+    void getPageableStateOrProvinces_noData_returnsEmptyPage() {
+        Country emptyCountry = countryRepository.save(Country.builder()
+            .name("empty-country")
+            .build());
+        StateOrProvinceListGetVm result = stateOrProvinceService.getPageableStateOrProvinces(0, 10, emptyCountry.getId());
+        assertNotNull(result);
+        assertEquals(0, result.totalElements());
+        org.junit.jupiter.api.Assertions.assertTrue(result.stateOrProvinceContent().isEmpty());
+    }
+
+    @Test
+    void getStateOrProvinceAndCountryNames_multipleItems_returnsAll() {
+        generateTestData();
+        List<StateOrProvinceAndCountryGetNameVm> result =
+            stateOrProvinceService.getStateOrProvinceAndCountryNames(
+                List.of(stateOrProvince1.getId(), stateOrProvince2.getId()));
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("state-or-province-1", result.get(0).stateOrProvinceName());
+        assertEquals("country-1", result.get(0).countryName());
+        assertEquals("state-or-province-2", result.get(1).stateOrProvinceName());
+    }
+
+    @Test
+    void getAllByCountryId_returnsCorrectFieldMapping() {
+        generateTestData();
+        List<StateOrProvinceVm> vms = stateOrProvinceService.getAllByCountryId(country.getId());
+        assertNotNull(vms);
+        assertEquals(2, vms.size());
+        StateOrProvinceVm first = vms.getFirst();
+        assertNotNull(first.id());
+        assertNotNull(first.name());
+        assertEquals(country.getId(), first.countryId());
+    }
+
+    @Test
+    void createStateOrProvince_withTypeField_Success() {
+        generateTestData();
+        StateOrProvincePostVm stateOrProvincePostVm = StateOrProvincePostVm.builder()
+            .countryId(country.getId())
+            .name("state-with-type")
+            .code("SWT")
+            .type("state")
+            .build();
+        StateOrProvince created = stateOrProvinceService.createStateOrProvince(stateOrProvincePostVm);
+        assertNotNull(created);
+        assertEquals("state-with-type", created.getName());
+        assertEquals("SWT", created.getCode());
+        assertEquals("state", created.getType());
+    }
+
+    @Test
+    void findAll_returnsVmWithCountryId() {
+        generateTestData();
+        List<StateOrProvinceVm> vms = stateOrProvinceService.findAll();
+        assertNotNull(vms);
+        assertEquals(2, vms.size());
+        for (StateOrProvinceVm vm : vms) {
+            assertEquals(country.getId(), vm.countryId());
+        }
+    }
+
+    @Test
+    void deleteStateOrProvince_afterDelete_countDecreases() {
+        generateTestData();
+        int before = stateOrProvinceService.findAll().size();
+        stateOrProvinceService.delete(stateOrProvince1.getId());
+        int after = stateOrProvinceService.findAll().size();
+        assertEquals(before - 1, after);
+    }
+}

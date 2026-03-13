@@ -383,4 +383,99 @@ public class AddressServiceTest {
         assertEquals("Line 2", persisted.addressLine2());
         assertEquals("123456789", persisted.phone());
     }
+
+    @Test
+    void createAddress_verifyAddressGetVmFields() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("vm-check")
+            .addressLine1("addr1")
+            .addressLine2("addr2")
+            .phone("555")
+            .city("vm-city")
+            .zipCode("99999")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .build();
+        AddressGetVm result = addressService.createAddress(addressPostVm);
+        assertNotNull(result);
+        assertNotNull(result.id());
+        assertEquals("vm-check", result.contactName());
+        assertEquals("555", result.phone());
+        assertEquals("addr1", result.addressLine1());
+        assertEquals("addr2", result.addressLine2());
+        assertEquals("vm-city", result.city());
+        assertEquals("99999", result.zipCode());
+        assertEquals(district.getId(), result.districtId());
+        assertEquals(stateOrProvince.getId(), result.stateOrProvinceId());
+        assertEquals(country.getId(), result.countryId());
+    }
+
+    @Test
+    void getAddress_verifyDetailVmNameFields() {
+        generateTestData();
+        AddressDetailVm detailVm = addressService.getAddress(address1.getId());
+        assertNotNull(detailVm);
+        assertEquals(address1.getId(), detailVm.id());
+        assertEquals("district-1", detailVm.districtName());
+        assertEquals(district.getId(), detailVm.districtId());
+        assertEquals("state-or-province", detailVm.stateOrProvinceName());
+        assertEquals(stateOrProvince.getId(), detailVm.stateOrProvinceId());
+        assertEquals("country-1", detailVm.countryName());
+        assertEquals(country.getId(), detailVm.countryId());
+    }
+
+    @Test
+    void updateAddress_withAddressLines_shouldPersist() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName(address1.getContactName())
+            .addressLine1("updated-line-1")
+            .addressLine2("updated-line-2")
+            .phone("99988")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city("updated-city")
+            .zipCode("11111")
+            .build();
+        addressService.updateAddress(address1.getId(), addressPostVm);
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+        assertNotNull(updated);
+        assertEquals("updated-line-1", updated.addressLine1());
+        assertEquals("updated-line-2", updated.addressLine2());
+        assertEquals("99988", updated.phone());
+    }
+
+    @Test
+    void deleteAddress_afterDelete_countDecreases() {
+        generateTestData();
+        List<AddressDetailVm> before = addressService.getAddressList(List.of(address1.getId(), address2.getId()));
+        addressService.deleteAddress(address1.getId());
+        List<AddressDetailVm> after = addressService.getAddressList(List.of(address1.getId(), address2.getId()));
+        assertEquals(before.size() - 1, after.size());
+    }
+
+    @Test
+    void createAddress_inValidStateOrProvince_ThrowsNotFoundException() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("bad-sop")
+            .districtId(district.getId())
+            .countryId(9999L)
+            .stateOrProvinceId(stateOrProvince.getId())
+            .build();
+        assertThrows(NotFoundException.class, () -> addressService.createAddress(addressPostVm));
+    }
+
+    @Test
+    void getAllAddresses_singleId_returnsSingleResult() {
+        generateTestData();
+        List<AddressDetailVm> result = addressService.getAddressList(List.of(address1.getId()));
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(address1.getId(), result.getFirst().id());
+    }
 }
+

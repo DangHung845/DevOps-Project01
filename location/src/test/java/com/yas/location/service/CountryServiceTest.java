@@ -239,4 +239,109 @@ public class CountryServiceTest {
         assertEquals(2, result.totalPages());
         org.junit.jupiter.api.Assertions.assertFalse(result.isLast());
     }
+
+    @Test
+    void createCountry_withCode3AndBooleanFlags_Success() {
+        CountryPostVm countryPostVm = CountryPostVm.builder()
+            .code2("NW")
+            .name("new-country")
+            .code3("NWC")
+            .isBillingEnabled(true)
+            .isShippingEnabled(false)
+            .isCityEnabled(true)
+            .isZipCodeEnabled(false)
+            .isDistrictEnabled(true)
+            .build();
+        Country country = countryService.create(countryPostVm);
+        assertNotNull(country);
+        assertEquals("NWC", country.getCode3());
+        assertEquals(true, country.getIsBillingEnabled());
+        assertEquals(false, country.getIsShippingEnabled());
+        assertEquals(true, country.getIsCityEnabled());
+        assertEquals(false, country.getIsZipCodeEnabled());
+        assertEquals(true, country.getIsDistrictEnabled());
+    }
+
+    @Test
+    void findById_shouldReturnAllCountryVmFields() {
+        Country saved = countryRepository.save(Country.builder()
+            .code2("FD")
+            .name("field-country")
+            .code3("FDC")
+            .isBillingEnabled(true)
+            .isShippingEnabled(true)
+            .isCityEnabled(false)
+            .isZipCodeEnabled(true)
+            .isDistrictEnabled(false)
+            .build());
+        CountryVm vm = countryService.findById(saved.getId());
+        assertNotNull(vm);
+        assertEquals(saved.getId(), vm.id());
+        assertEquals("FD", vm.code2());
+        assertEquals("field-country", vm.name());
+        assertEquals("FDC", vm.code3());
+        assertEquals(true, vm.isBillingEnabled());
+        assertEquals(true, vm.isShippingEnabled());
+        assertEquals(false, vm.isCityEnabled());
+        assertEquals(true, vm.isZipCodeEnabled());
+        assertEquals(false, vm.isDistrictEnabled());
+    }
+
+    @Test
+    void updateCountry_withCode2Change_Success() {
+        generateTestData();
+        CountryPostVm countryPostVm = CountryPostVm.builder()
+            .code2("UP")
+            .name("country-1")
+            .code3("UPD")
+            .isBillingEnabled(true)
+            .isShippingEnabled(true)
+            .build();
+        countryService.update(countryPostVm, country1.getId());
+        CountryVm countryVm = countryService.findById(country1.getId());
+        assertNotNull(countryVm);
+        assertEquals("UP", countryVm.code2());
+        assertEquals("UPD", countryVm.code3());
+        assertEquals(true, countryVm.isBillingEnabled());
+    }
+
+    @Test
+    void getPageableCountries_returnsCountryContent() {
+        generateTestData();
+        CountryListGetVm result = countryService.getPageableCountries(0, 10);
+        assertNotNull(result);
+        assertEquals(2, result.countryContent().size());
+        CountryVm first = result.countryContent().getFirst();
+        assertNotNull(first.id());
+        assertNotNull(first.name());
+    }
+
+    @Test
+    void deleteCountry_afterDelete_countDecreasesByOne() {
+        generateTestData();
+        int beforeSize = countryService.findAllCountries().size();
+        countryService.delete(country1.getId());
+        int afterSize = countryService.findAllCountries().size();
+        assertEquals(beforeSize - 1, afterSize);
+    }
+
+    @Test
+    void getPageableCountries_lastPage_isLastTrue() {
+        generateTestData();
+        CountryListGetVm result = countryService.getPageableCountries(1, 1);
+        assertNotNull(result);
+        assertTrue(result.isLast());
+        assertEquals(1, result.countryContent().size());
+    }
+
+    @Test
+    void createCountry_withNullBooleanFlags_Success() {
+        CountryPostVm countryPostVm = CountryPostVm.builder()
+            .code2("NB")
+            .name("null-booleans")
+            .build();
+        Country country = countryService.create(countryPostVm);
+        assertNotNull(country);
+        assertEquals("null-booleans", country.getName());
+    }
 }
