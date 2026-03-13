@@ -477,5 +477,145 @@ public class AddressServiceTest {
         assertEquals(1, result.size());
         assertEquals(address1.getId(), result.getFirst().id());
     }
+
+    @Test
+    void createAddress_withoutOptionalFields_shouldStillPersist() {
+        generateTestData();
+
+        AddressPostVm vm = AddressPostVm.builder()
+            .contactName("minimal")
+            .countryId(country.getId())
+            .build();
+
+        AddressGetVm result = addressService.createAddress(vm);
+
+        assertNotNull(result);
+        AddressDetailVm persisted = addressService.getAddress(result.id());
+        assertEquals("minimal", persisted.contactName());
+    }
+
+    @Test
+    void updateAddress_whenPhoneChanges_shouldPersist() {
+        generateTestData();
+
+        AddressPostVm vm = AddressPostVm.builder()
+            .contactName(address1.getContactName())
+            .phone("111222333")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city(address1.getCity())
+            .zipCode(address1.getZipCode())
+            .build();
+
+        addressService.updateAddress(address1.getId(), vm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+        assertEquals("111222333", updated.phone());
+    }
+
+    @Test
+    void updateAddress_whenAddressLineChanges_shouldPersist() {
+        generateTestData();
+
+        AddressPostVm vm = AddressPostVm.builder()
+            .contactName(address1.getContactName())
+            .addressLine1("new-line-1")
+            .addressLine2("new-line-2")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city(address1.getCity())
+            .zipCode(address1.getZipCode())
+            .build();
+
+        addressService.updateAddress(address1.getId(), vm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+        assertEquals("new-line-1", updated.addressLine1());
+        assertEquals("new-line-2", updated.addressLine2());
+    }
+
+    @Test
+    void getAddressList_whenIdsDoNotExist_shouldReturnEmpty() {
+        List<AddressDetailVm> result = addressService.getAddressList(List.of(999999L, 888888L));
+        assertNotNull(result);
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void deleteAddress_thenFetchingSameId_shouldThrowException() {
+        generateTestData();
+
+        Long id = address1.getId();
+        addressService.deleteAddress(id);
+
+        assertThrows(NotFoundException.class, () -> addressService.getAddress(id));
+    }
+
+    @Test
+    void createAddress_withNonExistingDistrict_shouldStillCreate() {
+        generateTestData();
+
+        AddressPostVm vm = AddressPostVm.builder()
+            .contactName("district-missing")
+            .districtId(99999L)
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .build();
+
+        AddressGetVm result = addressService.createAddress(vm);
+
+        assertNotNull(result);
+        AddressDetailVm persisted = addressService.getAddress(result.id());
+        assertEquals("district-missing", persisted.contactName());
+    }
+
+    @Test
+    void updateAddress_whenDistrictNotFound_shouldIgnoreDistrictUpdate() {
+        generateTestData();
+
+        AddressPostVm vm = AddressPostVm.builder()
+            .contactName("update-ignore-district")
+            .districtId(99999L)
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city(address1.getCity())
+            .zipCode(address1.getZipCode())
+            .build();
+
+        addressService.updateAddress(address1.getId(), vm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+        assertEquals("update-ignore-district", updated.contactName());
+    }
+
+    @Test
+    void getAddressList_withDuplicateIds_shouldReturnSinglePerStoredEntity() {
+        generateTestData();
+
+        List<AddressDetailVm> result =
+            addressService.getAddressList(List.of(address1.getId(), address1.getId()));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void createAddress_thenVerifyRepositoryCountIncreases() {
+        generateTestData();
+
+        long before = addressRepository.count();
+
+        AddressPostVm vm = AddressPostVm.builder()
+            .contactName("count-check")
+            .countryId(country.getId())
+            .build();
+
+        addressService.createAddress(vm);
+
+        long after = addressRepository.count();
+        assertEquals(before + 1, after);
+    }
 }
 
