@@ -194,4 +194,17 @@ public class CountryServiceTest {
         assertTrue(countryVms.size() >= 2);
         assertEquals("country-a", countryVms.getFirst().name());
     }
+
+    @Test
+    void getPageableCountries_whenNoCountries_returnsEmptyPage() {
+        int pageNo = 0;
+        int pageSize = 5;
+
+        CountryListGetVm result = countryService.getPageableCountries(pageNo, pageSize);
+
+        assertNotNull(result);
+        assertEquals(pageNo, result.pageNo());
+        assertEquals(0, result.totalElements());
+        assertTrue(result.countryContent().isEmpty());
+    }
 }

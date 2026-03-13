@@ -193,4 +193,42 @@ public class AddressServiceTest {
         assertNotNull(addressDetailVm);
         assertEquals("partial-update", addressDetailVm.contactName());
     }
+
+    @Test
+    void createAddress_whenDistrictAndStateProvinceMissing_stillCreatesWithCountry() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("no-district-state")
+            .districtId(null)
+            .countryId(country.getId())
+            .stateOrProvinceId(null)
+            .build();
+
+        AddressGetVm addressGetVm = addressService.createAddress(addressPostVm);
+
+        assertNotNull(addressGetVm);
+        AddressDetailVm persisted = addressService.getAddress(addressGetVm.id());
+        assertNotNull(persisted);
+        assertEquals("no-district-state", persisted.contactName());
+    }
+
+    @Test
+    void updateAddress_whenOnlyCityAndZipChange_shouldPersistThoseFields() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName(address1.getContactName())
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city("new-city")
+            .zipCode("99999")
+            .build();
+
+        addressService.updateAddress(address1.getId(), addressPostVm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+        assertNotNull(updated);
+        assertEquals("new-city", updated.city());
+        assertEquals("99999", updated.zipCode());
+    }
 }

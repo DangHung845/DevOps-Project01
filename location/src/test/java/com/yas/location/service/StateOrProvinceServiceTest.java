@@ -213,4 +213,17 @@ public class StateOrProvinceServiceTest {
         assertNotNull(stateOrProvinceVms);
         org.junit.jupiter.api.Assertions.assertTrue(stateOrProvinceVms.isEmpty());
     }
+
+    @Test
+    void getAllByCountryId_whenNoStateOrProvinceForCountry_returnsEmptyList() {
+        Country otherCountry = countryRepository.save(Country.builder()
+            .name("country-2")
+            .build());
+
+        List<StateOrProvinceVm> stateOrProvinceVms =
+            stateOrProvinceService.getAllByCountryId(otherCountry.getId());
+
+        assertNotNull(stateOrProvinceVms);
+        org.junit.jupiter.api.Assertions.assertTrue(stateOrProvinceVms.isEmpty());
+    }
 } // nothing
