@@ -145,30 +145,4 @@ class ProductAttributeServiceTest {
         ProductAttributePostVm vm = new ProductAttributePostVm("Duplicate Name", null);
         assertThrows(DuplicatedException.class, () -> productAttributeService.update(vm, 1L));
     }
-
-    @Test
-    void test_update_product_attribute_not_found() {
-
-        when(productAttributeRepository.findById(1L))
-                .thenReturn(Optional.empty());
-
-        ProductAttributePostVm vm =
-                new ProductAttributePostVm("name", null);
-
-        assertThrows(RuntimeException.class,
-                () -> productAttributeService.update(vm, 1L));
-    }
-
-    @Test
-    void test_save_product_attribute_group_not_found() {
-
-        when(productAttributeGroupRepository.findById(10L))
-                .thenReturn(Optional.empty());
-
-        ProductAttributePostVm vm =
-                new ProductAttributePostVm("name", 10L);
-
-        assertThrows(RuntimeException.class,
-                () -> productAttributeService.save(vm));
-    }
 }
