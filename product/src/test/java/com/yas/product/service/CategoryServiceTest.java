@@ -82,17 +82,19 @@ class CategoryServiceTest {
 
     @Test
     void createCategory_Success() {
-        CategoryPostVm vm = new CategoryPostVm(
-                "newName",
-                "slug",
-                "desc",
-                (short)1,
-                "metaDesc",
-                "metaKey",
-                true,
-                null,
-                null
-        );
+
+        com.yas.product.viewmodel.category.CategoryPostVm vm =
+                new com.yas.product.viewmodel.category.CategoryPostVm(
+                        "newName",
+                        "slug",
+                        "desc",
+                        (short)1,
+                        "metaDesc",
+                        "metaKey",
+                        true,
+                        null,
+                        null
+                );
 
         Category category = categoryService.create(vm);
 
@@ -102,34 +104,39 @@ class CategoryServiceTest {
 
     @Test
     void createCategory_DuplicateName() {
-        CategoryPostVm vm = new CategoryPostVm(
-                "name",
-                "slug",
-                "desc",
-                (short)1,
-                "metaDesc",
-                "metaKey",
-                true,
-                null,
-                null
-        );
 
-        Assertions.assertThrows(Exception.class, () -> categoryService.create(vm));
+        com.yas.product.viewmodel.category.CategoryPostVm vm =
+                new com.yas.product.viewmodel.category.CategoryPostVm(
+                        "name",
+                        "slug",
+                        "desc",
+                        (short)1,
+                        "metaDesc",
+                        "metaKey",
+                        true,
+                        null,
+                        null
+                );
+
+        Assertions.assertThrows(Exception.class,
+                () -> categoryService.create(vm));
     }
 
     @Test
     void updateCategory_NotFound() {
-        CategoryPostVm vm = new CategoryPostVm(
-                "newName",
-                "slug",
-                "desc",
-                (short)1,
-                "metaDesc",
-                "metaKey",
-                true,
-                null,
-                null
-        );
+
+        com.yas.product.viewmodel.category.CategoryPostVm vm =
+                new com.yas.product.viewmodel.category.CategoryPostVm(
+                        "newName",
+                        "slug",
+                        "desc",
+                        (short)1,
+                        "metaDesc",
+                        "metaKey",
+                        true,
+                        null,
+                        null
+                );
 
         Assertions.assertThrows(Exception.class,
                 () -> categoryService.update(vm, 999L));
