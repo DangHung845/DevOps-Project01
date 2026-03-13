@@ -80,4 +80,46 @@ class OrderServiceTest {
 
     }
 
+    @Test
+    void testCheckOrderExistsByProductAndUserWithStatus_whenReturnFalse() {
+
+        when(serviceUrlConfig.order()).thenReturn(ORDER_URL);
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(serviceUrlConfig.order())
+            .path("/storefront/orders/completed")
+            .queryParam("productId", "2")
+            .buildAndExpand()
+            .toUri();
+
+        setUpSecurityContext("test");
+
+        RestClient.RequestHeadersUriSpec requestHeadersUriSpec = Mockito.mock(RestClient.RequestHeadersUriSpec.class);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.headers(any())).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+
+        OrderExistsByProductAndUserGetVm response =
+            new OrderExistsByProductAndUserGetVm(false);
+
+        when(responseSpec.body(OrderExistsByProductAndUserGetVm.class))
+            .thenReturn(response);
+
+        OrderExistsByProductAndUserGetVm result =
+            orderService.checkOrderExistsByProductAndUserWithStatus(2L);
+
+        assertThat(result.isPresent()).isFalse();
+    }
+
+    @Test
+    void testHandleFallback_whenThrowableNotNull_returnFalseVm() throws Throwable {
+
+        Throwable throwable = new RuntimeException("error");
+
+        OrderExistsByProductAndUserGetVm result =
+            orderService.handleFallback(throwable);
+
+        assertThat(result).isNotNull();
+        assertThat(result.isPresent()).isFalse();
+    }
 }

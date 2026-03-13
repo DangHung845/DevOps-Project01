@@ -240,4 +240,76 @@ class RatingServiceTest {
         List<RatingVm>  newResponse = ratingService.getLatestRatings(5);
         assertEquals(0, newResponse.size());
     }
+
+    @Test
+    void createRating_CustomerNotFound_ShouldThrowNotFoundException() {
+
+        RatingPostVm ratingPostVm = RatingPostVm.builder()
+            .content("comment 5")
+            .productName("product4")
+            .star(5)
+            .productId(10L)
+            .build();
+
+        Jwt jwt = mock(Jwt.class);
+        JwtAuthenticationToken authentication = mock(JwtAuthenticationToken.class);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        when(authentication.getToken()).thenReturn(jwt);
+        when(authentication.getName()).thenReturn(userId);
+        when(jwt.getSubject()).thenReturn(userId);
+
+        when(orderService.checkOrderExistsByProductAndUserWithStatus(anyLong()))
+            .thenReturn(new OrderExistsByProductAndUserGetVm(true));
+
+        when(customerService.getCustomer()).thenReturn(null);
+
+        NotFoundException exception = assertThrows(
+            NotFoundException.class,
+            () -> ratingService.createRating(ratingPostVm)
+        );
+
+        assertEquals("CUSTOMER user1 is not found", exception.getMessage());
+    }
+
+    @Test
+    void getRatingListWithFilter_WhenNoResult_ShouldReturnEmpty() {
+        RatingListVm result = ratingService.getRatingListWithFilter(
+            "unknown",
+            "unknown",
+            "unknown",
+            ZonedDateTime.now().minusDays(10),
+            ZonedDateTime.now(),
+            0,
+            10
+        );
+
+        assertEquals(0, result.totalElements());
+        assertEquals(0, result.ratingList().size());
+    }
+
+    @Test
+    void calculateAverageStar_ProductHasOneRating_ShouldReturnCorrectAverage() {
+        Rating rating = Rating.builder()
+            .content("single rating")
+            .ratingStar(5)
+            .productId(100L)
+            .productName("product100")
+            .firstName("A")
+            .lastName("B")
+            .build();
+
+        ratingRepository.save(rating);
+
+        Double avg = ratingService.calculateAverageStar(100L);
+
+        assertEquals(5.0, avg);
+    }
+
+    @Test
+    void testGetLatestRatings_WhenCountGreaterThanListSize() {
+        List<RatingVm> result = ratingService.getLatestRatings(10);
+
+        assertFalse(result.isEmpty());
+    }
 }
