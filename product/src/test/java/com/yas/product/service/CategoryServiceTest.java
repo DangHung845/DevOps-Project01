@@ -91,7 +91,7 @@ class CategoryServiceTest {
                         1L,
                         "metaDesc",
                         "metaKey",
-                        true,
+                        (short)1,
                         null,
                         null
                 );
@@ -113,7 +113,7 @@ class CategoryServiceTest {
                         1L,
                         "metaDesc",
                         "metaKey",
-                        true,
+                        (short)1,
                         null,
                         null
                 );
@@ -133,7 +133,7 @@ class CategoryServiceTest {
                         1L,
                         "metaDesc",
                         "metaKey",
-                        true,
+                        (short)1,
                         null,
                         null
                 );
