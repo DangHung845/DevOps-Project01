@@ -46,6 +46,7 @@ public class TaxServiceTest {
 
     TaxRate taxRate;
     TaxClass taxClass;
+    TaxClassService taxClassService;
 
     @BeforeEach
     void setUp() {
@@ -54,6 +55,7 @@ public class TaxServiceTest {
             .set(field("taxClass"), taxClass)
             .create();
         lenient().when(taxRateRepository.findAll()).thenReturn(List.of(taxRate));
+        taxClassService = new TaxClassService(taxClassRepository);
     }
 
     @Test
@@ -279,6 +281,161 @@ public class TaxServiceTest {
         assertThat(result).containsExactly(
             TaxRateVm.fromModel(first),
             TaxRateVm.fromModel(second)
+        );
+    }
+
+    // -------- Tests for TaxClassService --------
+
+    @Test
+    void findAllTaxClasses_shouldReturnSortedTaxClassVms() {
+        TaxClass first = Instancio.create(TaxClass.class);
+        TaxClass second = Instancio.create(TaxClass.class);
+
+        when(taxClassRepository.findAll(org.mockito.ArgumentMatchers.any()))
+            .thenReturn(List.of(first, second));
+
+        List<com.yas.tax.viewmodel.taxclass.TaxClassVm> result = taxClassService.findAllTaxClasses();
+
+        assertThat(result).hasSize(2);
+        assertThat(result)
+            .containsExactly(
+                com.yas.tax.viewmodel.taxclass.TaxClassVm.fromModel(first),
+                com.yas.tax.viewmodel.taxclass.TaxClassVm.fromModel(second)
+            );
+    }
+
+    @Test
+    void findTaxClassById_shouldReturnVm_whenTaxClassExists() {
+        Long id = 1L;
+        TaxClass existing = this.taxClass;
+        when(taxClassRepository.findById(id)).thenReturn(Optional.of(existing));
+
+        com.yas.tax.viewmodel.taxclass.TaxClassVm result = taxClassService.findById(id);
+
+        assertThat(result).isEqualTo(com.yas.tax.viewmodel.taxclass.TaxClassVm.fromModel(existing));
+    }
+
+    @Test
+    void findTaxClassById_shouldThrowNotFound_whenTaxClassDoesNotExist() {
+        Long id = 1L;
+        when(taxClassRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taxClassService.findById(id))
+            .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void createTaxClass_shouldSaveAndReturnEntity_whenNameNotDuplicated() {
+        String name = "Standard";
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm(name);
+
+        when(taxClassRepository.existsByName(name)).thenReturn(false);
+        when(taxClassRepository.save(org.mockito.ArgumentMatchers.any(TaxClass.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaxClass result = taxClassService.create(postVm);
+
+        assertThat(result.getName()).isEqualTo(name);
+        verify(taxClassRepository, times(1)).save(org.mockito.ArgumentMatchers.any(TaxClass.class));
+    }
+
+    @Test
+    void createTaxClass_shouldThrowDuplicated_whenNameAlreadyExists() {
+        String name = "Standard";
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm(name);
+
+        when(taxClassRepository.existsByName(name)).thenReturn(true);
+
+        assertThatThrownBy(() -> taxClassService.create(postVm))
+            .isInstanceOf(com.yas.commonlibrary.exception.DuplicatedException.class);
+    }
+
+    @Test
+    void updateTaxClass_shouldUpdateAndSave_whenTaxClassExistsAndNameNotDuplicated() {
+        Long id = 1L;
+        TaxClass existing = this.taxClass;
+        String newName = "Updated";
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm(newName);
+
+        when(taxClassRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(taxClassRepository.existsByNameNotUpdatingTaxClass(newName, id)).thenReturn(false);
+
+        taxClassService.update(postVm, id);
+
+        assertThat(existing.getName()).isEqualTo(newName);
+        verify(taxClassRepository, times(1)).save(existing);
+    }
+
+    @Test
+    void updateTaxClass_shouldThrowNotFound_whenTaxClassDoesNotExist() {
+        Long id = 1L;
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm("Name");
+
+        when(taxClassRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taxClassService.update(postVm, id))
+            .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void updateTaxClass_shouldThrowDuplicated_whenNameAlreadyExistsForAnotherTaxClass() {
+        Long id = 1L;
+        TaxClass existing = this.taxClass;
+        String newName = "Duplicated";
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm(newName);
+
+        when(taxClassRepository.findById(id)).thenReturn(Optional.of(existing));
+        when(taxClassRepository.existsByNameNotUpdatingTaxClass(newName, id)).thenReturn(true);
+
+        assertThatThrownBy(() -> taxClassService.update(postVm, id))
+            .isInstanceOf(com.yas.commonlibrary.exception.DuplicatedException.class);
+        verify(taxClassRepository, times(0)).save(existing);
+    }
+
+    @Test
+    void deleteTaxClass_shouldDelete_whenTaxClassExists() {
+        Long id = 1L;
+        when(taxClassRepository.existsById(id)).thenReturn(true);
+
+        taxClassService.delete(id);
+
+        verify(taxClassRepository, times(1)).deleteById(id);
+    }
+
+    @Test
+    void deleteTaxClass_shouldThrowNotFound_whenTaxClassDoesNotExist() {
+        Long id = 1L;
+        when(taxClassRepository.existsById(id)).thenReturn(false);
+
+        assertThatThrownBy(() -> taxClassService.delete(id))
+            .isInstanceOf(NotFoundException.class);
+        verify(taxClassRepository, times(0)).deleteById(id);
+    }
+
+    @Test
+    void getPageableTaxClasses_shouldReturnListGetVmWithContent() {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        TaxClass first = Instancio.create(TaxClass.class);
+        TaxClass second = Instancio.create(TaxClass.class);
+
+        org.springframework.data.domain.Page<TaxClass> page =
+            new org.springframework.data.domain.PageImpl<>(List.of(first, second), pageable, 2);
+
+        when(taxClassRepository.findAll(pageable)).thenReturn(page);
+
+        com.yas.tax.viewmodel.taxclass.TaxClassListGetVm result =
+            taxClassService.getPageableTaxClasses(0, 10);
+
+        assertThat(result.taxClassContent()).hasSize(2);
+        assertThat(result.totalElements()).isEqualTo(2);
+        assertThat(result.taxClassContent()).containsExactly(
+            com.yas.tax.viewmodel.taxclass.TaxClassVm.fromModel(first),
+            com.yas.tax.viewmodel.taxclass.TaxClassVm.fromModel(second)
         );
     }
 }
