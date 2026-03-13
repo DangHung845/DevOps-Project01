@@ -245,4 +245,49 @@ public class StateOrProvinceServiceTest {
         assertEquals("STATE2", created.getCode());
         assertEquals(otherCountry.getId(), created.getCountry().getId());
     }
+
+    @Test
+    void updateStateOrProvince_WithSameNameAndSameCountry_Success() {
+        generateTestData();
+        StateOrProvincePostVm stateOrProvincePostVm = StateOrProvincePostVm.builder()
+            .countryId(country.getId())
+            .name(stateOrProvince1.getName())
+            .code("NEWC")
+            .type("NEWT")
+            .build();
+        stateOrProvinceService.updateStateOrProvince(stateOrProvincePostVm, stateOrProvince1.getId());
+        StateOrProvinceVm updated = stateOrProvinceService.findById(stateOrProvince1.getId());
+        assertNotNull(updated);
+        assertEquals("NEWC", updated.code());
+    }
+
+    @Test
+    void getStateOrProvinceAndCountryNames_withMixedExistingAndNonExistingIds_returnsOnlyExistingOnes() {
+        generateTestData();
+        List<StateOrProvinceAndCountryGetNameVm> result =
+            stateOrProvinceService.getStateOrProvinceAndCountryNames(java.util.List.of(stateOrProvince1.getId(), 999999L));
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("state-or-province-1", result.getFirst().name());
+    }
+
+    @Test
+    void getPageableStateOrProvinces_whenNoData_returnsEmptyPage() {
+        StateOrProvinceListGetVm result = stateOrProvinceService.getPageableStateOrProvinces(0, 10, 9999L);
+        assertNotNull(result);
+        assertEquals(0, result.totalElements());
+        org.junit.jupiter.api.Assertions.assertTrue(result.stateOrProvinceContent().isEmpty());
+    }
+
+    @Test
+    void getPageableStateOrProvinces_whenHasData_returnsCorrectPaginationMetrics() {
+        generateTestData();
+        StateOrProvinceListGetVm result = stateOrProvinceService.getPageableStateOrProvinces(0, 1, country.getId());
+        assertNotNull(result);
+        assertEquals(0, result.pageNo());
+        assertEquals(1, result.pageSize());
+        assertEquals(2, result.totalElements());
+        assertEquals(2, result.totalPages());
+        org.junit.jupiter.api.Assertions.assertFalse(result.isLast());
+    }
 } // nothing

@@ -325,4 +325,62 @@ public class AddressServiceTest {
             addressService.updateAddress(99999L, addressPostVm)
         );
     }
+
+    @Test
+    void createAddress_whenStateOrProvinceAndDistrictNotFound_savesAddressWithoutThem() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("not-found-refs")
+            .districtId(9999L)
+            .countryId(country.getId())
+            .stateOrProvinceId(8888L)
+            .build();
+
+        AddressGetVm addressGetVm = addressService.createAddress(addressPostVm);
+
+        assertNotNull(addressGetVm);
+        AddressDetailVm persisted = addressService.getAddress(addressGetVm.id());
+        assertNotNull(persisted);
+        assertEquals("not-found-refs", persisted.contactName());
+    }
+
+    @Test
+    void updateAddress_whenStateOrProvinceAndCountryAndDistrictNotFound_keepsOldValuesOrIgnores() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("update-not-found-refs")
+            .districtId(9999L)
+            .countryId(8888L)
+            .stateOrProvinceId(7777L)
+            .build();
+
+        addressService.updateAddress(address1.getId(), addressPostVm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+        assertNotNull(updated);
+        assertEquals("update-not-found-refs", updated.contactName());
+    }
+
+    @Test
+    void createAddress_withAllFields_Success() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("full-address")
+            .addressLine1("Line 1")
+            .addressLine2("Line 2")
+            .phone("123456789")
+            .city("Full City")
+            .zipCode("12345")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .build();
+        AddressGetVm addressGetVm = addressService.createAddress(addressPostVm);
+        assertNotNull(addressGetVm);
+        AddressDetailVm persisted = addressService.getAddress(addressGetVm.id());
+        assertNotNull(persisted);
+        assertEquals("Line 1", persisted.addressLine1());
+        assertEquals("Line 2", persisted.addressLine2());
+        assertEquals("123456789", persisted.phone());
+    }
 }

@@ -214,4 +214,29 @@ public class CountryServiceTest {
         assertNotNull(countryVms);
         assertTrue(countryVms.isEmpty());
     }
+
+    @Test
+    void updateCountry_WithSameNameAndCode_Success() {
+        generateTestData();
+        CountryPostVm countryPostVm = CountryPostVm.builder()
+            .code2(country1.getCode2())
+            .name(country1.getName())
+            .build();
+        countryService.update(countryPostVm, country1.getId());
+        CountryVm countryVm = countryService.findById(country1.getId());
+        assertNotNull(countryVm);
+        assertEquals(country1.getName(), countryVm.name());
+    }
+
+    @Test
+    void getPageableCountries_whenHasCountries_returnsCorrectPaginationMetrics() {
+        generateTestData();
+        CountryListGetVm result = countryService.getPageableCountries(0, 1);
+        assertNotNull(result);
+        assertEquals(0, result.pageNo());
+        assertEquals(1, result.pageSize());
+        assertEquals(2, result.totalElements());
+        assertEquals(2, result.totalPages());
+        org.junit.jupiter.api.Assertions.assertFalse(result.isLast());
+    }
 }
