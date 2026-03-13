@@ -79,7 +79,8 @@ pipeline {
                         'search',
                         'webhook',
                         'common-library',
-                        'inventory'
+                        'inventory',
+                        'location'
                     ]
 
                     // 4) Decide impacted modules (Option A: ONLY folder-based changes)
