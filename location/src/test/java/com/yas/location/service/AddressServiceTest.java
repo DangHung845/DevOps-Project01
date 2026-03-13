@@ -307,4 +307,22 @@ public class AddressServiceTest {
         assertEquals(address1.getCity(), updated.city());
         assertEquals(address1.getZipCode(), updated.zipCode());
     }
+
+    @Test
+    void updateAddress_whenAddressNotFound_shouldThrowException() {
+        generateTestData();
+
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("test")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city("city")
+            .zipCode("12345")
+            .build();
+
+        assertThrows(RuntimeException.class, () -> 
+            addressService.updateAddress(99999L, addressPostVm)
+        );
+    }
 }
