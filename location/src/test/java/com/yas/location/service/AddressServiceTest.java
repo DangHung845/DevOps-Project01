@@ -241,4 +241,25 @@ public class AddressServiceTest {
         assertEquals(1, addressDetailVmList.size());
         assertEquals(address1.getId(), addressDetailVmList.getFirst().id());
     }
+    
+    @Test
+    void updateAddress_whenContactNameChanges_shouldPersistContactName() {
+        generateTestData();
+
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("new-contact")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city(address1.getCity())
+            .zipCode(address1.getZipCode())
+            .build();
+
+        addressService.updateAddress(address1.getId(), addressPostVm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+
+        assertNotNull(updated);
+        assertEquals("new-contact", updated.contactName());
+    }
 }
