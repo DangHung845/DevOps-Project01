@@ -274,5 +274,15 @@ class MediaServiceUnitTest {
         return media;
     }
 
+    @Test
+    void getFile_whenValid_thenReturnFile() throws Exception {
+        byte[] content = "file-data".getBytes();
 
+        when(mediaRepository.findById(1L)).thenReturn(Optional.of(media));
+        when(fileSystemRepository.getFile(any())).thenReturn(new java.io.ByteArrayInputStream(content));
+
+        MediaDto mediaDto = mediaService.getFile(1L, "file");
+
+        assertNotNull(mediaDto);
+    }
 }

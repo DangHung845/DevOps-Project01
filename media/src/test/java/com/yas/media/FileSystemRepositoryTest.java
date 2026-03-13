@@ -107,5 +107,53 @@ class FileSystemRepositoryTest {
         assertThrows(IllegalStateException.class, () -> fileSystemRepository.getFile(filePathStr));
     }
 
+    @Test
+    void testPersistFile_whenValid_thenSaveSuccess() throws Exception {
+        String filename = "ok-file.txt";
+        byte[] content = "hello".getBytes();
+
+        File directory = new File(TEST_URL);
+        directory.mkdirs();
+
+        when(filesystemConfig.getDirectory()).thenReturn(TEST_URL);
+
+        String path = fileSystemRepository.persistFile(filename, content);
+
+        Path saved = Paths.get(path);
+        byte[] savedContent = Files.readAllBytes(saved);
+
+        assertArrayEquals(content, savedContent);
+    }
+
+    @Test
+    void testPersistFile_whenInvalidFilename_thenThrowException() {
+        String filename = "../hack.txt";
+        byte[] content = "bad".getBytes();
+
+        File directory = new File(TEST_URL);
+        directory.mkdirs();
+
+        when(filesystemConfig.getDirectory()).thenReturn(TEST_URL);
+
+        assertThrows(IllegalArgumentException.class,
+            () -> fileSystemRepository.persistFile(filename, content));
+    }
+
+    @Test
+    void testGetFile_whenIOException_thenThrowRuntimeException() throws Exception {
+        String filename = "test.txt";
+        String filePathStr = Paths.get(TEST_URL, filename).toString();
+
+        when(filesystemConfig.getDirectory()).thenReturn(TEST_URL);
+
+        Path filePath = Paths.get(filePathStr);
+        Files.createDirectories(filePath.getParent());
+        Files.write(filePath, "data".getBytes());
+
+        Files.delete(filePath);
+
+        assertThrows(RuntimeException.class,
+            () -> fileSystemRepository.getFile(filePathStr));
+    }
 }
 
