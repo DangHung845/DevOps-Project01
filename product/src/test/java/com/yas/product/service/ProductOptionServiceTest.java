@@ -132,4 +132,20 @@ class ProductOptionServiceTest {
         assertEquals(0, result.pageNo());
         assertEquals(2, result.pageSize());
     }
+
+    @Test
+    void test_create_product_option_repository_called() {
+
+        ProductOptionPostVm vm = new ProductOptionPostVm("test");
+
+        when(productOptionRepository.findExistedName("test", null))
+                .thenReturn(null);
+
+        when(productOptionRepository.save(any(ProductOption.class)))
+                .thenReturn(new ProductOption());
+
+        ProductOption result = productOptionService.create(vm);
+
+        assertNotNull(result);
+    }
 }

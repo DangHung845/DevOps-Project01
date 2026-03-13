@@ -149,4 +149,29 @@ class ProductTemplateServiceTest {
         assertEquals(Constants.ErrorCode.PRODUCT_TEMPlATE_IS_NOT_FOUND, exception.getMessage());
     }
 
+    @Test
+    void validateExistedName_WhenDuplicate_ThrowException() {
+
+        ProductTemplate template = new ProductTemplate();
+        template.setName("duplicate");
+
+        productTemplateRepository.save(template);
+
+        assertThrows(DuplicatedException.class,
+                () -> productTemplateService.validateExistedName("duplicate", null));
+    }
+
+    @Test
+    void checkExistedName_ReturnTrue() {
+
+        ProductTemplate template = new ProductTemplate();
+        template.setName("exist");
+
+        productTemplateRepository.save(template);
+
+        boolean result = productTemplateService.checkExistedName("exist", null);
+
+        assertTrue(result);
+    }
+
 }

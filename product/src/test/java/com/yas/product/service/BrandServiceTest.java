@@ -106,4 +106,36 @@ class BrandServiceTest {
             brandService.update(brandPostVm, 1L);
         });
     }
+    
+    @Test
+    void test_get_brands_by_ids() {
+        Brand brand = new Brand();
+        brand.setId(1L);
+        brand.setName("TestBrand");
+
+        when(brandRepository.findAllById(any())).thenReturn(List.of(brand));
+
+        var result = brandService.getBrandsByIds(List.of(1L));
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void test_delete_brand_success() {
+        Brand brand = new Brand();
+        brand.setId(1L);
+
+        when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+
+        brandService.delete(1L);
+    }
+
+    @Test
+    void test_delete_brand_not_found() {
+        when(brandRepository.findById(1L)).thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class, () -> {
+            brandService.delete(1L);
+        });
+    }
 }

@@ -79,4 +79,59 @@ class CategoryServiceTest {
         CategoryGetVm categoryGetVm = categoryService.getCategories("a").getFirst();
         assertEquals("name", categoryGetVm.name());
     }
+
+    @Test
+    void createCategory_Success() {
+        CategoryPostVm vm = new CategoryPostVm(
+                "newName",
+                "slug",
+                "desc",
+                (short)1,
+                "metaDesc",
+                "metaKey",
+                true,
+                null,
+                null
+        );
+
+        Category category = categoryService.create(vm);
+
+        assertNotNull(category);
+        assertEquals("newName", category.getName());
+    }
+
+    @Test
+    void createCategory_DuplicateName() {
+        CategoryPostVm vm = new CategoryPostVm(
+                "name",
+                "slug",
+                "desc",
+                (short)1,
+                "metaDesc",
+                "metaKey",
+                true,
+                null,
+                null
+        );
+
+        Assertions.assertThrows(Exception.class, () -> categoryService.create(vm));
+    }
+
+    @Test
+    void updateCategory_NotFound() {
+        CategoryPostVm vm = new CategoryPostVm(
+                "newName",
+                "slug",
+                "desc",
+                (short)1,
+                "metaDesc",
+                "metaKey",
+                true,
+                null,
+                null
+        );
+
+        Assertions.assertThrows(Exception.class,
+                () -> categoryService.update(vm, 999L));
+    }
 }
