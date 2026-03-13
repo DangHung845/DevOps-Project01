@@ -312,4 +312,114 @@ class RatingServiceTest {
 
         assertFalse(result.isEmpty());
     }
+
+    @Test
+    void getRatingListByProductId_WithPageSizeOne_ShouldReturnSingleElement() {
+        RatingListVm response = ratingService.getRatingListByProductId(1L, 0, 1);
+
+        assertEquals(1, response.ratingList().size());
+        assertEquals(2, response.totalElements());
+    }
+
+    @Test
+    void getRatingListWithFilter_DifferentProduct_ShouldReturnEmpty() {
+        RatingListVm response = ratingService.getRatingListWithFilter(
+            "not-exist",
+            "unknown",
+            "unknown",
+            ZonedDateTime.now().minusDays(5),
+            ZonedDateTime.now().plusDays(5),
+            0,
+            10
+        );
+
+        assertEquals(0, response.totalElements());
+        assertEquals(0, response.ratingList().size());
+    }
+
+    @Test
+    void testGetLatestRatings_WhenCountIsOne_returnSingleRating() {
+        List<RatingVm> ratings = ratingService.getLatestRatings(1);
+
+        assertEquals(1, ratings.size());
+    }
+
+    @Test
+    void deleteRating_WhenNewRatingInserted_ShouldDeleteSuccessfully() {
+
+        Rating rating = Rating.builder()
+            .content("temp")
+            .ratingStar(4)
+            .productId(500L)
+            .productName("p500")
+            .firstName("A")
+            .lastName("B")
+            .build();
+
+        Rating saved = ratingRepository.save(rating);
+
+        ratingService.deleteRating(saved.getId());
+
+        Optional<Rating> result = ratingRepository.findById(saved.getId());
+        assertFalse(result.isPresent());
+    }
+
+    @Test
+    void calculateAverageStar_WithDifferentRatings_ShouldReturnCorrectValue() {
+
+        Rating rating1 = Rating.builder()
+            .content("r1")
+            .ratingStar(5)
+            .productId(200L)
+            .productName("p200")
+            .firstName("A")
+            .lastName("B")
+            .build();
+
+        Rating rating2 = Rating.builder()
+            .content("r2")
+            .ratingStar(3)
+            .productId(200L)
+            .productName("p200")
+            .firstName("A")
+            .lastName("B")
+            .build();
+
+        ratingRepository.save(rating1);
+        ratingRepository.save(rating2);
+
+        Double avg = ratingService.calculateAverageStar(200L);
+
+        assertEquals(4, avg);
+    }
+
+    @Test
+    void createRating_AnotherValidCase_ShouldSuccess() {
+
+        Jwt jwt = mock(Jwt.class);
+        JwtAuthenticationToken authentication = mock(JwtAuthenticationToken.class);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        when(authentication.getToken()).thenReturn(jwt);
+        when(authentication.getName()).thenReturn("user-new");
+        when(jwt.getSubject()).thenReturn("user-new");
+
+        when(orderService.checkOrderExistsByProductAndUserWithStatus(anyLong()))
+            .thenReturn(new OrderExistsByProductAndUserGetVm(true));
+
+        when(customerService.getCustomer())
+            .thenReturn(new CustomerVm("user-new", null, "Test", "User"));
+
+        RatingPostVm ratingPostVm = RatingPostVm.builder()
+            .content("another rating")
+            .productName("product-x")
+            .star(5)
+            .productId(50L)
+            .build();
+
+        RatingVm result = ratingService.createRating(ratingPostVm);
+
+        assertEquals("product-x", result.productName());
+        assertEquals("another rating", result.content());
+    }
 }
