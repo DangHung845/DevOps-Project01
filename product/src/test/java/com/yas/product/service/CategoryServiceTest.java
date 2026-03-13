@@ -141,4 +141,5 @@ class CategoryServiceTest {
         Assertions.assertThrows(Exception.class,
                 () -> categoryService.update(vm, 999L));
     }
+
 }
