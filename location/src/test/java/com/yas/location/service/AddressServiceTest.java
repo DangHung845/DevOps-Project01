@@ -80,6 +80,20 @@ public class AddressServiceTest {
     }
 
     @Test
+    void testGetAddressList_empty() {
+        List<AddressDetailVm> result =
+            addressService.getAddressList(List.of());
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testDeleteAddress_invalid() {
+        assertThrows(Exception.class, () ->
+            addressService.deleteAddress(999L));
+    }
+
+    @Test
     void getAddress_ExistInDatabase_Success() {
         generateTestData();
         AddressDetailVm addressDetailVm = addressService.getAddress(address1.getId());
