@@ -46,7 +46,6 @@ public class TaxServiceTest {
 
     TaxRate taxRate;
     TaxClass taxClass;
-    TaxClassService taxClassService;
 
     @BeforeEach
     void setUp() {
@@ -55,7 +54,6 @@ public class TaxServiceTest {
             .set(field("taxClass"), taxClass)
             .create();
         lenient().when(taxRateRepository.findAll()).thenReturn(List.of(taxRate));
-        taxClassService = new TaxClassService(taxClassRepository);
     }
 
     @Test
@@ -284,14 +282,51 @@ public class TaxServiceTest {
         );
     }
 
-    // -------- Tests for TaxClassService --------
+    // -------- Additional tests for TaxRateService branching --------
+
+    @Test
+    void getPageableTaxRates_shouldHandleLocationServiceReturningEmptyList() {
+        Pageable pageable = PageRequest.of(0, 10);
+        TaxRate rate = this.taxRate;
+        rate.setStateOrProvinceId(1L);
+        rate.setCountryId(10L);
+        rate.getTaxClass().setName("Standard");
+
+        Page<TaxRate> page = new PageImpl<>(List.of(rate), pageable, 1);
+        when(taxRateRepository.findAll(pageable)).thenReturn(page);
+        when(locationService.getStateOrProvinceAndCountryNames(List.of(1L))).thenReturn(List.of());
+
+        TaxRateListGetVm result = taxRateService.getPageableTaxRates(0, 10);
+
+        assertThat(result.taxRateGetDetailContent()).isEmpty();
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getBulkTaxRate_shouldReturnEmptyList_whenRepositoryReturnsEmpty() {
+        Long countryId = 2L;
+        Long stateId = 3L;
+        String zipCode = "12345";
+        List<Long> taxClassIds = List.of(1L, 2L);
+
+        when(taxRateRepository.getBatchTaxRates(countryId, stateId, zipCode, org.mockito.ArgumentMatchers.any()))
+            .thenReturn(List.of());
+
+        List<TaxRateVm> result = taxRateService.getBulkTaxRate(taxClassIds, countryId, stateId, zipCode);
+
+        assertThat(result).isEmpty();
+    }
+
+    // -------- Tests for TaxClassService (created per test, no new fields) --------
 
     @Test
     void findAllTaxClasses_shouldReturnSortedTaxClassVms() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         TaxClass first = Instancio.create(TaxClass.class);
         TaxClass second = Instancio.create(TaxClass.class);
 
-        when(taxClassRepository.findAll(org.mockito.ArgumentMatchers.any()))
+        when(taxClassRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "name")))
             .thenReturn(List.of(first, second));
 
         List<com.yas.tax.viewmodel.taxclass.TaxClassVm> result = taxClassService.findAllTaxClasses();
@@ -306,6 +341,8 @@ public class TaxServiceTest {
 
     @Test
     void findTaxClassById_shouldReturnVm_whenTaxClassExists() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         TaxClass existing = this.taxClass;
         when(taxClassRepository.findById(id)).thenReturn(Optional.of(existing));
@@ -317,6 +354,8 @@ public class TaxServiceTest {
 
     @Test
     void findTaxClassById_shouldThrowNotFound_whenTaxClassDoesNotExist() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         when(taxClassRepository.findById(id)).thenReturn(Optional.empty());
 
@@ -326,22 +365,26 @@ public class TaxServiceTest {
 
     @Test
     void createTaxClass_shouldSaveAndReturnEntity_whenNameNotDuplicated() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         String name = "Standard";
         com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
             new com.yas.tax.viewmodel.taxclass.TaxClassPostVm(name);
 
         when(taxClassRepository.existsByName(name)).thenReturn(false);
-        when(taxClassRepository.save(org.mockito.ArgumentMatchers.any(TaxClass.class)))
+        when(taxClassRepository.save(any(TaxClass.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
         TaxClass result = taxClassService.create(postVm);
 
         assertThat(result.getName()).isEqualTo(name);
-        verify(taxClassRepository, times(1)).save(org.mockito.ArgumentMatchers.any(TaxClass.class));
+        verify(taxClassRepository, times(1)).save(any(TaxClass.class));
     }
 
     @Test
     void createTaxClass_shouldThrowDuplicated_whenNameAlreadyExists() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         String name = "Standard";
         com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
             new com.yas.tax.viewmodel.taxclass.TaxClassPostVm(name);
@@ -354,6 +397,8 @@ public class TaxServiceTest {
 
     @Test
     void updateTaxClass_shouldUpdateAndSave_whenTaxClassExistsAndNameNotDuplicated() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         TaxClass existing = this.taxClass;
         String newName = "Updated";
@@ -371,6 +416,8 @@ public class TaxServiceTest {
 
     @Test
     void updateTaxClass_shouldThrowNotFound_whenTaxClassDoesNotExist() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
             new com.yas.tax.viewmodel.taxclass.TaxClassPostVm("Name");
@@ -383,6 +430,8 @@ public class TaxServiceTest {
 
     @Test
     void updateTaxClass_shouldThrowDuplicated_whenNameAlreadyExistsForAnotherTaxClass() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         TaxClass existing = this.taxClass;
         String newName = "Duplicated";
@@ -399,6 +448,8 @@ public class TaxServiceTest {
 
     @Test
     void deleteTaxClass_shouldDelete_whenTaxClassExists() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         when(taxClassRepository.existsById(id)).thenReturn(true);
 
@@ -409,6 +460,8 @@ public class TaxServiceTest {
 
     @Test
     void deleteTaxClass_shouldThrowNotFound_whenTaxClassDoesNotExist() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         Long id = 1L;
         when(taxClassRepository.existsById(id)).thenReturn(false);
 
@@ -419,6 +472,8 @@ public class TaxServiceTest {
 
     @Test
     void getPageableTaxClasses_shouldReturnListGetVmWithContent() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(taxClassRepository);
+
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
         TaxClass first = Instancio.create(TaxClass.class);
         TaxClass second = Instancio.create(TaxClass.class);
