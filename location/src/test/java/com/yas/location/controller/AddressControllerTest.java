@@ -21,6 +21,17 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
+
+import com.yas.location.viewmodel.address.AddressDetailVm;
+import com.yas.location.viewmodel.address.AddressGetVm;
+
+import java.util.List;
+
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = AddressController.class)
 @ContextConfiguration(classes = LocationApplication.class)
@@ -170,5 +181,46 @@ class AddressControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testGetAddressById_whenValidId_thenReturnOk() throws Exception {
+
+        AddressDetailVm vm = AddressDetailVm.builder()
+            .id(1L)
+            .contactName("contactName")
+            .phone("12345678")
+            .build();
+
+        when(addressService.getAddress(1L)).thenReturn(vm);
+
+        this.mockMvc.perform(get("/storefront/addresses/1"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void testGetAddressList_whenIdsProvided_thenReturnOk() throws Exception {
+
+        AddressDetailVm vm = AddressDetailVm.builder()
+            .id(1L)
+            .contactName("contactName")
+            .phone("12345678")
+            .build();
+
+        when(addressService.getAddressList(List.of(1L, 2L)))
+            .thenReturn(List.of(vm));
+
+        this.mockMvc.perform(get("/storefront/addresses")
+                .param("ids", "1", "2"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void testDeleteAddress_whenValidId_thenReturnOk() throws Exception {
+
+        doNothing().when(addressService).deleteAddress(1L);
+
+        this.mockMvc.perform(delete("/storefront/addresses/1"))
+            .andExpect(status().isOk());
     }
 }
