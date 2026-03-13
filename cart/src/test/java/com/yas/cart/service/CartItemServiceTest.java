@@ -259,4 +259,69 @@ class CartItemServiceTest {
         when(jwt.getSubject()).thenReturn(userIdToMock);
         SecurityContextHolder.setContext(securityContext);
     }
+
+    @Test
+    void testDeleteCartItem_shouldCallRepository() {
+
+        mockCurrentUserId(CURRENT_USER_ID_SAMPLE);
+
+        cartItemService.deleteCartItem(PRODUCT_ID_SAMPLE);
+
+        verify(cartItemRepository)
+            .deleteByCustomerIdAndProductId(CURRENT_USER_ID_SAMPLE, PRODUCT_ID_SAMPLE);
+    }
+
+    @Test
+    void testGetCartItems_whenEmpty_shouldReturnEmptyList() {
+
+        mockCurrentUserId(CURRENT_USER_ID_SAMPLE);
+
+        when(cartItemRepository.findByCustomerIdOrderByCreatedOnDesc(anyString()))
+                .thenReturn(List.of());
+
+        List<CartItemGetVm> result = cartItemService.getCartItems();
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testDeleteOrAdjustCartItem_whenCartItemNotFound_shouldReturnEmptyList() {
+
+        CartItemDeleteVm cartItemDeleteVm = new CartItemDeleteVm(PRODUCT_ID_SAMPLE, 1);
+
+        mockCurrentUserId(CURRENT_USER_ID_SAMPLE);
+
+        when(cartItemRepository.findByCustomerIdAndProductIdIn(any(), any()))
+                .thenReturn(List.of());
+
+        List<CartItemGetVm> result =
+                cartItemService.deleteOrAdjustCartItem(List.of(cartItemDeleteVm));
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testDeleteOrAdjustCartItem_whenDuplicateButSameQuantity_shouldNotThrow() {
+
+        CartItemDeleteVm vm1 = new CartItemDeleteVm(PRODUCT_ID_SAMPLE, 1);
+        CartItemDeleteVm vm2 = new CartItemDeleteVm(PRODUCT_ID_SAMPLE, 1);
+
+        CartItem existing = CartItem.builder()
+                .customerId(CURRENT_USER_ID_SAMPLE)
+                .productId(PRODUCT_ID_SAMPLE)
+                .quantity(2)
+                .build();
+
+        mockCurrentUserId(CURRENT_USER_ID_SAMPLE);
+
+        when(cartItemRepository.findByCustomerIdAndProductIdIn(any(), any()))
+                .thenReturn(List.of(existing));
+
+        when(cartItemRepository.saveAll(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        cartItemService.deleteOrAdjustCartItem(List.of(vm1, vm2));
+
+        verify(cartItemRepository).saveAll(any());
+    }
 }

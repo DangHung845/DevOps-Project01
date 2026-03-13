@@ -87,4 +87,69 @@ class ProductServiceTest {
 
         return List.of(product1, product2, product3);
     }
+
+    @Test
+    void getProductById_whenProductsEmpty_shouldReturnNull() {
+
+        List<Long> ids = List.of(1L);
+
+        URI url = UriComponentsBuilder
+                .fromHttpUrl("http://api.yas.local/media")
+                .path("/storefront/products/list-featured")
+                .queryParam("productId", ids)
+                .build()
+                .toUri();
+
+        when(serviceUrlConfig.product()).thenReturn("http://api.yas.local/media");
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(url)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.toEntity(new ParameterizedTypeReference<List<ProductThumbnailVm>>() {}))
+                .thenReturn(ResponseEntity.ok(List.of()));
+
+        ProductThumbnailVm result = productService.getProductById(1L);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void existsById_whenProductExists_shouldReturnTrue() {
+
+        ProductThumbnailVm product = new ProductThumbnailVm(
+                1L, "Product", "slug", "img"
+        );
+
+        ProductService spyService = Mockito.spy(productService);
+
+        Mockito.doReturn(List.of(product))
+                .when(spyService)
+                .getProducts(List.of(1L));
+
+        boolean result = spyService.existsById(1L);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void existsById_whenProductNotExists_shouldReturnFalse() {
+
+        ProductService spyService = Mockito.spy(productService);
+
+        Mockito.doReturn(List.of())
+                .when(spyService)
+                .getProducts(List.of(1L));
+
+        boolean result = spyService.existsById(1L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void handleProductThumbnailFallback_shouldReturnNull() throws Throwable {
+
+        List<ProductThumbnailVm> result =
+                productService.handleProductThumbnailFallback(new RuntimeException());
+
+        assertThat(result).isNull();
+    }
 }
