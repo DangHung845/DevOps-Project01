@@ -169,4 +169,59 @@ class LocationServiceTest {
         );
     }
 
+    @Test
+    void testGetAddressesByIdList_emptyResult() {
+
+        List<Long> ids = List.of(10L);
+
+        when(serviceUrlConfig.location()).thenReturn(INVENTORY_URL);
+        URI uri = UriComponentsBuilder.fromHttpUrl(INVENTORY_URL)
+            .path("/storefront/addresses")
+            .queryParam("ids", ids)
+            .build()
+            .toUri();
+
+        setUpSecurityContext("test");
+
+        RestClient.RequestHeadersUriSpec requestHeadersUriSpec = Mockito.mock(RestClient.RequestHeadersUriSpec.class);
+        when(restClient.get()).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.uri(uri)).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.headers(any())).thenReturn(requestHeadersUriSpec);
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+
+        when(responseSpec.body(new ParameterizedTypeReference<List<AddressDetailVm>>() {}))
+            .thenReturn(Collections.emptyList());
+
+        List<AddressDetailVm> result = locationService.getAddressesByIdList(ids);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void testCreateAddress_differentInput() {
+
+        when(serviceUrlConfig.location()).thenReturn(INVENTORY_URL);
+        URI uri = UriComponentsBuilder.fromHttpUrl(INVENTORY_URL)
+            .path("/storefront/addresses")
+            .build()
+            .toUri();
+
+        setUpSecurityContext("test");
+
+        RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+        when(restClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(uri)).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.headers(any())).thenReturn(requestBodyUriSpec);
+
+        AddressPostVm addressPostVm = getAddressPostVm();
+        when(requestBodyUriSpec.body(addressPostVm)).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
+
+        AddressVm addressVm = getAddressVm();
+        when(responseSpec.body(AddressVm.class)).thenReturn(addressVm);
+
+        AddressVm result = locationService.createAddress(addressPostVm);
+
+        assertThat(result).isEqualTo(addressVm);
+    }
 }

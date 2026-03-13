@@ -318,4 +318,40 @@ class CustomerServiceTest {
 
         assertThrows(DuplicatedException.class, () -> customerService.create(customerPostVm));
     }
+
+    @Test
+    void testDeleteCustomer_userNotFound_throwNotFoundException() {
+        UserResource userResource = mock(UserResource.class);
+        when(usersResource.get(USER_NAME)).thenReturn(userResource);
+        when(userResource.toRepresentation()).thenReturn(null);
+
+        NotFoundException thrown = assertThrows(NotFoundException.class,
+            () -> customerService.deleteCustomer(USER_NAME));
+
+        assertTrue(thrown.getMessage().contains("User not found"));
+    }
+
+    @Test
+    void testCreateUser_whenEmailAlreadyExists_thenThrowDuplicateException() {
+        CustomerPostVm customerPostVm = new CustomerPostVm("user1", "test@gmail.com", "John",
+            "Doe", "123", "ADMIN");
+
+        when(realmResource.users().search(anyString(), anyBoolean()))
+            .thenReturn(Collections.emptyList());
+
+        when(realmResource.users().search(any(), any(), any(), anyString(), any(), any()))
+            .thenReturn(Collections.singletonList(mock(UserRepresentation.class)));
+
+        assertThrows(DuplicatedException.class, () -> customerService.create(customerPostVm));
+    }
+
+    @Test
+    void testCreatePasswordCredentials() {
+        var credential = CustomerService.createPasswordCredentials("password123");
+
+        assertThat(credential.getValue()).isEqualTo("password123");
+        assertThat(credential.getType()).isEqualTo("password");
+        assertFalse(credential.isTemporary());
+    }
+
 }
