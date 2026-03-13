@@ -80,4 +80,14 @@ public class DistrictServiceTest {
         assertNotNull(districtGetVm);
         org.junit.jupiter.api.Assertions.assertTrue(districtGetVm.size() >= 2);
     }
+
+    @Test
+    void getDistrict_afterAllDistrictsDeleted_returnsEmptyList() {
+        generateTestData();
+        districtRepository.deleteAll();
+
+        List<DistrictGetVm> districtGetVm = districtService.getList(stateOrProvince.getId());
+        assertNotNull(districtGetVm);
+        org.junit.jupiter.api.Assertions.assertTrue(districtGetVm.isEmpty());
+    }
 }

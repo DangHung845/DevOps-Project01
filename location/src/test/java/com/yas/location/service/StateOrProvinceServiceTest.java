@@ -226,4 +226,23 @@ public class StateOrProvinceServiceTest {
         assertNotNull(stateOrProvinceVms);
         org.junit.jupiter.api.Assertions.assertTrue(stateOrProvinceVms.isEmpty());
     }
+
+    @Test
+    void createStateOrProvince_withSameNameButDifferentCountry_succeeds() {
+        generateTestData();
+        Country otherCountry = countryRepository.save(Country.builder()
+            .name("country-2")
+            .build());
+
+        StateOrProvincePostVm stateOrProvincePostVm = StateOrProvincePostVm.builder()
+            .countryId(otherCountry.getId())
+            .name("state-or-province-1")
+            .code("STATE2")
+            .build();
+
+        StateOrProvince created = stateOrProvinceService.createStateOrProvince(stateOrProvincePostVm);
+        assertNotNull(created);
+        assertEquals("STATE2", created.getCode());
+        assertEquals(otherCountry.getId(), created.getCountry().getId());
+    }
 } // nothing

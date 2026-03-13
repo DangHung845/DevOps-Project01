@@ -207,4 +207,11 @@ public class CountryServiceTest {
         assertEquals(0, result.totalElements());
         assertTrue(result.countryContent().isEmpty());
     }
+
+    @Test
+    void findAllCountries_whenNoCountries_returnsEmptyList() {
+        List<CountryVm> countryVms = countryService.findAllCountries();
+        assertNotNull(countryVms);
+        assertTrue(countryVms.isEmpty());
+    }
 }

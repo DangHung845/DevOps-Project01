@@ -231,4 +231,14 @@ public class AddressServiceTest {
         assertEquals("new-city", updated.city());
         assertEquals("99999", updated.zipCode());
     }
+
+    @Test
+    void getAllAddresses_withMixedExistingAndNonExistingIds_returnsOnlyExistingOnes() {
+        generateTestData();
+        List<AddressDetailVm> addressDetailVmList =
+            addressService.getAddressList(java.util.List.of(address1.getId(), 999999L));
+        assertNotNull(addressDetailVmList);
+        assertEquals(1, addressDetailVmList.size());
+        assertEquals(address1.getId(), addressDetailVmList.getFirst().id());
+    }
 }
