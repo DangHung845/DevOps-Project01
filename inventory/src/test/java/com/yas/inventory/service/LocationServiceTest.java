@@ -630,4 +630,4 @@ class LocationServiceTest {
         assertThat(result.data()).hasSize(1);
         assertThat(result.data().getFirst().productName()).isEqualTo("Product");
     }
-}
+} // nothing
