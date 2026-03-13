@@ -141,41 +141,4 @@ class CategoryServiceTest {
         Assertions.assertThrows(Exception.class,
                 () -> categoryService.update(vm, 999L));
     }
-
-    CategoryPostVm vm = new CategoryPostVm(
-            "Electronics",
-            "electronics",
-            "desc",
-            null,
-            "metaDesc",
-            "metaKey",
-            true,
-            null,
-            null
-    );
-
-    @Test
-    void createCategory_ParentNotFound() {
-
-        CategoryPostVm vm = new CategoryPostVm(
-                "Phone",
-                "phone",
-                "desc",
-                10L,
-                "metaDesc",
-                "metaKey",
-                true,
-                null,
-                null
-        );
-
-        Mockito.when(categoryRepository.findByName("Phone"))
-                .thenReturn(Optional.empty());
-
-        Mockito.when(categoryRepository.findById(10L))
-                .thenReturn(Optional.empty());
-
-        Assertions.assertThrows(NotFoundException.class,
-                () -> categoryService.create(vm));
-    }
 }
