@@ -344,4 +344,120 @@ public class CountryServiceTest {
         assertNotNull(country);
         assertEquals("null-booleans", country.getName());
     }
+
+    @Test
+    void createCountry_whenBothNameAndCodeUnique_shouldPersist() {
+        CountryPostVm vm = CountryPostVm.builder()
+            .code2("AA")
+            .name("alpha-country")
+            .build();
+
+        Country country = countryService.create(vm);
+
+        assertNotNull(country);
+        assertEquals("alpha-country", country.getName());
+    }
+
+    @Test
+    void findAllCountries_afterCreate_shouldContainNewCountry() {
+        CountryPostVm vm = CountryPostVm.builder()
+            .code2("BB")
+            .name("beta-country")
+            .build();
+
+        countryService.create(vm);
+
+        List<CountryVm> countries = countryService.findAllCountries();
+
+        assertTrue(countries.stream().anyMatch(c -> "beta-country".equals(c.name())));
+    }
+
+    @Test
+    void updateCountry_changeNameOnly_shouldPersist() {
+        generateTestData();
+
+        CountryPostVm vm = CountryPostVm.builder()
+            .name("renamed-country")
+            .code2(country1.getCode2())
+            .build();
+
+        countryService.update(vm, country1.getId());
+
+        CountryVm updated = countryService.findById(country1.getId());
+        assertEquals("renamed-country", updated.name());
+    }
+
+    @Test
+    void updateCountry_changeCodeOnly_shouldPersist() {
+        generateTestData();
+
+        CountryPostVm vm = CountryPostVm.builder()
+            .name(country1.getName())
+            .code2("ZZ")
+            .build();
+
+        countryService.update(vm, country1.getId());
+
+        CountryVm updated = countryService.findById(country1.getId());
+        assertEquals("ZZ", updated.code2());
+    }
+
+    @Test
+    void getPageableCountries_withLargePageSize_returnsAll() {
+        generateTestData();
+
+        CountryListGetVm result = countryService.getPageableCountries(0, 100);
+
+        assertNotNull(result);
+        assertEquals(2, result.totalElements());
+        assertEquals(1, result.totalPages());
+    }
+
+    @Test
+    void getPageableCountries_whenPageExceeds_shouldReturnEmptyContent() {
+        generateTestData();
+
+        CountryListGetVm result = countryService.getPageableCountries(5, 5);
+
+        assertNotNull(result);
+        assertTrue(result.countryContent().isEmpty());
+    }
+
+    @Test
+    void deleteCountry_thenFindAllCountries_shouldNotContainDeleted() {
+        generateTestData();
+
+        Long id = country1.getId();
+        countryService.delete(id);
+
+        List<CountryVm> list = countryService.findAllCountries();
+
+        assertTrue(list.stream().noneMatch(c -> c.id().equals(id)));
+    }
+
+    @Test
+    void findById_afterCreate_shouldReturnCorrectCountry() {
+        CountryPostVm vm = CountryPostVm.builder()
+            .code2("XY")
+            .name("lookup-country")
+            .build();
+
+        Country created = countryService.create(vm);
+
+        CountryVm result = countryService.findById(created.getId());
+
+        assertNotNull(result);
+        assertEquals("lookup-country", result.name());
+    }
+
+    @Test
+    void findAllCountries_multipleCreates_shouldReturnCorrectCount() {
+        countryService.create(CountryPostVm.builder().code2("C1").name("c1").build());
+        countryService.create(CountryPostVm.builder().code2("C2").name("c2").build());
+        countryService.create(CountryPostVm.builder().code2("C3").name("c3").build());
+
+        List<CountryVm> countries = countryService.findAllCountries();
+
+        assertEquals(3, countries.size());
+    }
 }
