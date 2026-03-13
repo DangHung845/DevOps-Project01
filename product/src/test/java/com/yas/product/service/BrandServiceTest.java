@@ -106,7 +106,7 @@ class BrandServiceTest {
             brandService.update(brandPostVm, 1L);
         });
     }
-    
+
     @Test
     void test_get_brands_by_ids() {
         Brand brand = new Brand();
@@ -137,5 +137,31 @@ class BrandServiceTest {
         Assertions.assertThrows(NotFoundException.class, () -> {
             brandService.delete(1L);
         });
+    }
+
+    @Test
+    void deleteBrand_NotFound() {
+
+        Mockito.when(brandRepository.findById(99L))
+                .thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class,
+                () -> brandService.delete(99L));
+    }
+
+    @Test
+    void deleteBrand_ProductExists() {
+
+        Brand brand = new Brand();
+        brand.setId(1L);
+
+        Mockito.when(brandRepository.findById(1L))
+                .thenReturn(Optional.of(brand));
+
+        Mockito.when(productRepository.existsByBrandId(1L))
+                .thenReturn(true);
+
+        Assertions.assertThrows(BadRequestException.class,
+                () -> brandService.delete(1L));
     }
 }

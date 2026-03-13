@@ -173,5 +173,15 @@ class ProductTemplateServiceTest {
 
         assertTrue(result);
     }
+    
+    @Test
+    void getTemplate_NotFound() {
+
+        Mockito.when(productTemplateRepository.findById(100L))
+                .thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class,
+                () -> productTemplateService.getById(100L));
+    }
 
 }

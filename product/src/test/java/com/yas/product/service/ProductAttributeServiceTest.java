@@ -171,4 +171,17 @@ class ProductAttributeServiceTest {
         assertThrows(RuntimeException.class,
                 () -> productAttributeService.save(vm));
     }
+
+    @Test
+    void createAttribute_Duplicate() {
+
+        ProductAttributePostVm vm = new ProductAttributePostVm();
+        vm.setName("Color");
+
+        Mockito.when(productAttributeRepository.findByName("Color"))
+                .thenReturn(Optional.of(new ProductAttribute()));
+
+        Assertions.assertThrows(DuplicatedException.class,
+                () -> productAttributeService.create(vm));
+    }
 }
