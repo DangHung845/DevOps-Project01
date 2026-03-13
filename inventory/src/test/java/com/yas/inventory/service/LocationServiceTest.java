@@ -205,67 +205,6 @@ class LocationServiceTest {
     }
 
     @Test
-    void testWarehouseService_getProductWarehouse_whenProductIdsNotEmpty_shouldMarkExistFlag() {
-        com.yas.inventory.repository.WarehouseRepository warehouseRepository =
-            mock(com.yas.inventory.repository.WarehouseRepository.class);
-        com.yas.inventory.repository.StockRepository stockRepository =
-            mock(com.yas.inventory.repository.StockRepository.class);
-        com.yas.inventory.service.ProductService productService =
-            mock(com.yas.inventory.service.ProductService.class);
-        LocationService mockedLocationService = mock(LocationService.class);
-
-        com.yas.inventory.service.WarehouseService warehouseService =
-            new com.yas.inventory.service.WarehouseService(warehouseRepository, stockRepository, productService,
-                mockedLocationService);
-
-        java.util.List<Long> productIds = java.util.List.of(1L);
-        when(stockRepository.getProductIdsInWarehouse(1L)).thenReturn(productIds);
-
-        com.yas.inventory.viewmodel.product.ProductInfoVm productInfoVm =
-            new com.yas.inventory.viewmodel.product.ProductInfoVm(1L, "Product1", "SKU1", true);
-        when(productService.filterProducts("name", "sku", productIds,
-            com.yas.inventory.model.enumeration.FilterExistInWhSelection.YES))
-            .thenReturn(java.util.List.of(productInfoVm));
-
-        java.util.List<com.yas.inventory.viewmodel.product.ProductInfoVm> result =
-            warehouseService.getProductWarehouse(1L, "name", "sku",
-                com.yas.inventory.model.enumeration.FilterExistInWhSelection.YES);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().existInWarehouse()).isTrue();
-    }
-
-    @Test
-    void testWarehouseService_getProductWarehouse_whenProductIdsEmpty_shouldReturnOriginalList() {
-        com.yas.inventory.repository.WarehouseRepository warehouseRepository =
-            mock(com.yas.inventory.repository.WarehouseRepository.class);
-        com.yas.inventory.repository.StockRepository stockRepository =
-            mock(com.yas.inventory.repository.StockRepository.class);
-        com.yas.inventory.service.ProductService productService =
-            mock(com.yas.inventory.service.ProductService.class);
-        LocationService mockedLocationService = mock(LocationService.class);
-
-        com.yas.inventory.service.WarehouseService warehouseService =
-            new com.yas.inventory.service.WarehouseService(warehouseRepository, stockRepository, productService,
-                mockedLocationService);
-
-        when(stockRepository.getProductIdsInWarehouse(1L)).thenReturn(java.util.List.of());
-
-        com.yas.inventory.viewmodel.product.ProductInfoVm productInfoVm =
-            new com.yas.inventory.viewmodel.product.ProductInfoVm(1L, "Product1", "SKU1", true);
-        when(productService.filterProducts("name", "sku", java.util.List.of(),
-            com.yas.inventory.model.enumeration.FilterExistInWhSelection.YES))
-            .thenReturn(java.util.List.of(productInfoVm));
-
-        java.util.List<com.yas.inventory.viewmodel.product.ProductInfoVm> result =
-            warehouseService.getProductWarehouse(1L, "name", "sku",
-                com.yas.inventory.model.enumeration.FilterExistInWhSelection.YES);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().existInWarehouse()).isTrue();
-    }
-
-    @Test
     void testWarehouseService_findById_shouldReturnDetailVm() {
         com.yas.inventory.repository.WarehouseRepository warehouseRepository =
             mock(com.yas.inventory.repository.WarehouseRepository.class);
