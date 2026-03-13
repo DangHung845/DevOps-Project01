@@ -169,4 +169,28 @@ public class AddressServiceTest {
         NotFoundException exception = assertThrows(NotFoundException.class, () -> addressService.deleteAddress(1L));
         assertEquals(String.format("The address %s is not found", "1"), exception.getMessage());
     }
+
+    @Test
+    void getAllAddresses_givenEmptyIdList_returnsEmptyList() {
+        List<AddressDetailVm> addressDetailVmList = addressService.getAddressList(java.util.List.of());
+        assertNotNull(addressDetailVmList);
+        assertEquals(0, addressDetailVmList.size());
+    }
+
+    @Test
+    void updateAddress_givenExistingAddressWithPartialFields_updatesAndPersists() {
+        generateTestData();
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("partial-update")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .build();
+
+        addressService.updateAddress(address1.getId(), addressPostVm);
+
+        AddressDetailVm addressDetailVm = addressService.getAddress(address1.getId());
+        assertNotNull(addressDetailVm);
+        assertEquals("partial-update", addressDetailVm.contactName());
+    }
 }

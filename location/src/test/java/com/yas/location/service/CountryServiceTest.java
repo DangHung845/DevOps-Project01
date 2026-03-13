@@ -178,4 +178,20 @@ public class CountryServiceTest {
         assertEquals(2, countryListGetVm.totalElements());
         assertEquals(1, countryListGetVm.totalPages());
     }
+
+    @Test
+    void getAllCountries_shouldReturnCountriesSortedByNameAsc() {
+        countryRepository.save(Country.builder()
+            .code2("C3")
+            .name("country-c")
+            .build());
+        countryRepository.save(Country.builder()
+            .code2("A1")
+            .name("country-a")
+            .build());
+        List<CountryVm> countryVms = countryService.findAllCountries();
+        assertNotNull(countryVms);
+        assertTrue(countryVms.size() >= 2);
+        assertEquals("country-a", countryVms.getFirst().name());
+    }
 }

@@ -198,4 +198,19 @@ public class StateOrProvinceServiceTest {
         assertEquals(stateOrProvinceListGetVm.pageSize(), pageSize);
         assertEquals(2, stateOrProvinceListGetVm.stateOrProvinceContent().size());
     }
+
+    @Test
+    void getStateOrProvinceAndCountryName_givenEmptyList_returnsEmptyList() {
+        List<StateOrProvinceAndCountryGetNameVm> result =
+            stateOrProvinceService.getStateOrProvinceAndCountryNames(java.util.List.of());
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getAllStateOrProvinces_whenNoData_returnsEmptyList() {
+        List<StateOrProvinceVm> stateOrProvinceVms = stateOrProvinceService.findAll();
+        assertNotNull(stateOrProvinceVms);
+        org.junit.jupiter.api.Assertions.assertTrue(stateOrProvinceVms.isEmpty());
+    }
 }

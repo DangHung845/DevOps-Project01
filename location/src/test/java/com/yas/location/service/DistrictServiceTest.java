@@ -59,4 +59,12 @@ public class DistrictServiceTest {
         List<DistrictGetVm> districtGetVm = districtService.getList(district1.getId());
         assertNotNull(districtGetVm);
     }
+
+    @Test
+    void getDistrict_WithNoDistrictsForState_ReturnsEmptyList() {
+        generateTestData();
+        List<DistrictGetVm> districtGetVm = districtService.getList(9999L);
+        assertNotNull(districtGetVm);
+        org.junit.jupiter.api.Assertions.assertTrue(districtGetVm.isEmpty());
+    }
 }
