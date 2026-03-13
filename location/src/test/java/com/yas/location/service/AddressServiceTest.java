@@ -285,4 +285,26 @@ public class AddressServiceTest {
         assertEquals("another-city", updated.city());
         assertEquals("88888", updated.zipCode());
     }
+
+    @Test
+    void updateAddress_whenDataIsSame_shouldKeepValues() {
+        generateTestData();
+
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName(address1.getContactName())
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city(address1.getCity())
+            .zipCode(address1.getZipCode())
+            .build();
+
+        addressService.updateAddress(address1.getId(), addressPostVm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+
+        assertNotNull(updated);
+        assertEquals(address1.getCity(), updated.city());
+        assertEquals(address1.getZipCode(), updated.zipCode());
+    }
 }
