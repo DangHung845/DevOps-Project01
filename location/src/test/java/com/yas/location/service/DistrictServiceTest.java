@@ -151,5 +151,96 @@ public class DistrictServiceTest {
         List<DistrictGetVm> after = districtService.getList(stateOrProvince.getId());
         org.junit.jupiter.api.Assertions.assertEquals(beforeSize + 1, after.size());
     }
+    
+    @Test
+    void getDistrict_whenMultipleStates_shouldReturnOnlyMatchingStateDistricts() {
+        generateTestData();
+
+        StateOrProvince anotherState = stateOrProvinceRepository.save(
+            StateOrProvince.builder()
+                .name("state-2")
+                .country(country)
+                .build()
+        );
+
+        districtRepository.save(
+            District.builder()
+                .name("other-district")
+                .stateProvince(anotherState)
+                .build()
+        );
+
+        List<DistrictGetVm> result = districtService.getList(stateOrProvince.getId());
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertEquals(1, result.size());
+        org.junit.jupiter.api.Assertions.assertEquals("district-1", result.getFirst().name());
+    }
+
+    @Test
+    void getDistrict_whenManyDistrictsExist_shouldReturnAllSorted() {
+        generateTestData();
+
+        districtRepository.save(District.builder()
+            .name("b-district")
+            .stateProvince(stateOrProvince)
+            .build());
+
+        districtRepository.save(District.builder()
+            .name("a-district")
+            .stateProvince(stateOrProvince)
+            .build());
+
+        List<DistrictGetVm> result = districtService.getList(stateOrProvince.getId());
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertEquals(3, result.size());
+        org.junit.jupiter.api.Assertions.assertEquals("a-district", result.getFirst().name());
+    }
+
+    @Test
+    void getDistrict_afterStateDeleted_shouldReturnEmptyList() {
+        generateTestData();
+
+        Long stateId = stateOrProvince.getId();
+
+        districtRepository.deleteAll();
+        stateOrProvinceRepository.deleteById(stateId);
+
+        List<DistrictGetVm> result = districtService.getList(stateId);
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getDistrict_whenOnlyOneDistrictExists_shouldReturnCorrectVm() {
+        generateTestData();
+
+        List<DistrictGetVm> result = districtService.getList(stateOrProvince.getId());
+
+        assertNotNull(result);
+        DistrictGetVm vm = result.getFirst();
+
+        org.junit.jupiter.api.Assertions.assertEquals("district-1", vm.name());
+        org.junit.jupiter.api.Assertions.assertNotNull(vm.id());
+    }
+
+    @Test
+    void getDistrict_whenStateHasNoDistrictButExists_shouldReturnEmptyList() {
+        generateTestData();
+
+        StateOrProvince newState = stateOrProvinceRepository.save(
+            StateOrProvince.builder()
+                .name("empty-state")
+                .country(country)
+                .build()
+        );
+
+        List<DistrictGetVm> result = districtService.getList(newState.getId());
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty());
+    }
 }
 

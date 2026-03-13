@@ -370,4 +370,73 @@ public class StateOrProvinceServiceTest {
         int after = stateOrProvinceService.findAll().size();
         assertEquals(before - 1, after);
     }
+
+    @Test
+    void updateStateOrProvince_withCountryNotExist_ThrowsCountryNotFound() {
+        generateTestData();
+
+        StateOrProvincePostVm vm = StateOrProvincePostVm.builder()
+            .countryId(9999L)
+            .name("new-name")
+            .code("NEW")
+            .build();
+
+        NotFoundException exception = assertThrows(
+            NotFoundException.class,
+            () -> stateOrProvinceService.updateStateOrProvince(vm, stateOrProvince1.getId())
+        );
+
+        assertEquals(String.format("The country %s is not found", "9999"), exception.getMessage());
+    }
+
+    @Test
+    void getStateOrProvinceAndCountryNames_withInvalidIds_returnsEmptyList() {
+        generateTestData();
+
+        List<StateOrProvinceAndCountryGetNameVm> result =
+            stateOrProvinceService.getStateOrProvinceAndCountryNames(List.of(999L, 888L));
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getPageableStateOrProvinces_pageOutOfRange_returnsEmptyContent() {
+        generateTestData();
+
+        StateOrProvinceListGetVm result =
+            stateOrProvinceService.getPageableStateOrProvinces(10, 5, country.getId());
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.stateOrProvinceContent().isEmpty());
+    }
+
+    @Test
+    void getAllByCountryId_withInvalidCountry_returnsEmptyList() {
+        generateTestData();
+
+        List<StateOrProvinceVm> result =
+            stateOrProvinceService.getAllByCountryId(9999L);
+
+        assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void createStateOrProvince_verifyPersistedInDatabase() {
+        generateTestData();
+
+        StateOrProvincePostVm vm = StateOrProvincePostVm.builder()
+            .countryId(country.getId())
+            .name("persist-test")
+            .code("PST")
+            .build();
+
+        StateOrProvince created = stateOrProvinceService.createStateOrProvince(vm);
+
+        StateOrProvinceVm fetched = stateOrProvinceService.findById(created.getId());
+
+        assertNotNull(fetched);
+        assertEquals("persist-test", fetched.name());
+    }
 }
