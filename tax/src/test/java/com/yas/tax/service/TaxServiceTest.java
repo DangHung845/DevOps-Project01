@@ -426,4 +426,258 @@ public class TaxServiceTest {
         assertThat(result.taxClassContent()).hasSize(1);
         assertThat(result.taxClassContent().get(0).name()).isEqualTo("Standard");
     }
+
+    @Test
+    void testTaxRateController_getPageableTaxRates_shouldReturnOkResponse() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        com.yas.tax.viewmodel.taxrate.TaxRateListGetVm vm =
+            new com.yas.tax.viewmodel.taxrate.TaxRateListGetVm(java.util.List.of(), 0, 10, 0, 0, true);
+        lenient().when(taxRateService.getPageableTaxRates(0, 10)).thenReturn(vm);
+
+        org.springframework.http.ResponseEntity<com.yas.tax.viewmodel.taxrate.TaxRateListGetVm> response =
+            controller.getPageableTaxRates(0, 10);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isSameAs(vm);
+    }
+
+    @Test
+    void testTaxRateController_getTaxRate_shouldReturnOkResponse() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        lenient().when(taxRateRepository.findById(1L)).thenReturn(java.util.Optional.of(taxRate));
+
+        org.springframework.http.ResponseEntity<TaxRateVm> response = controller.getTaxRate(1L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isEqualTo(TaxRateVm.fromModel(taxRate));
+    }
+
+    @Test
+    void testTaxRateController_createTaxRate_shouldReturnCreatedResponse() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        com.yas.tax.viewmodel.taxrate.TaxRatePostVm postVm =
+            new com.yas.tax.viewmodel.taxrate.TaxRatePostVm(10.0, "12345", 1L, 2L, 3L);
+        TaxClass taxClass = new TaxClass();
+        taxClass.setId(1L);
+        taxClass.setName("Standard");
+
+        TaxRate saved = new TaxRate();
+        saved.setId(100L);
+        saved.setRate(10.0);
+        saved.setZipCode("12345");
+        saved.setTaxClass(taxClass);
+        saved.setStateOrProvinceId(2L);
+        saved.setCountryId(3L);
+
+        lenient().when(taxClassRepository.existsById(1L)).thenReturn(true);
+        lenient().when(taxClassRepository.getReferenceById(1L)).thenReturn(taxClass);
+        lenient().when(taxRateRepository.save(org.mockito.ArgumentMatchers.any(TaxRate.class))).thenReturn(saved);
+
+        org.springframework.web.util.UriComponentsBuilder uriBuilder =
+            org.springframework.web.util.UriComponentsBuilder.fromUriString("http://localhost");
+
+        org.springframework.http.ResponseEntity<TaxRateVm> response =
+            controller.createTaxRate(postVm, uriBuilder);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(201);
+        assertThat(response.getHeaders().getLocation()).isNotNull();
+        assertThat(response.getHeaders().getLocation().getPath()).endsWith("/tax-rates/100");
+        assertThat(response.getBody()).isEqualTo(TaxRateVm.fromModel(saved));
+    }
+
+    @Test
+    void testTaxRateController_updateTaxRate_shouldReturnNoContent() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        com.yas.tax.viewmodel.taxrate.TaxRatePostVm postVm =
+            new com.yas.tax.viewmodel.taxrate.TaxRatePostVm(15.0, "99999", 1L, 2L, 3L);
+
+        org.springframework.http.ResponseEntity<Void> response =
+            controller.updateTaxRate(1L, postVm);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+    }
+
+    @Test
+    void testTaxRateController_deleteTaxRate_shouldReturnNoContent() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        org.springframework.http.ResponseEntity<Void> response = controller.deleteTaxRate(1L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+    }
+
+    @Test
+    void testTaxRateController_getTaxPercentByAddress_shouldReturnOkWithBody() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        lenient().when(taxRateRepository.getTaxPercent(3L, 2L, "12345", 1L)).thenReturn(7.5);
+
+        org.springframework.http.ResponseEntity<Double> response =
+            controller.getTaxPercentByAddress(1L, 3L, 2L, "12345");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).isEqualTo(7.5);
+    }
+
+    @Test
+    void testTaxRateController_getBatchTaxPercentsByAddress_shouldReturnOkWithBody() {
+        com.yas.tax.controller.TaxRateController controller =
+            new com.yas.tax.controller.TaxRateController(taxRateService);
+
+        taxRate.setStateOrProvinceId(2L);
+        taxRate.setCountryId(3L);
+
+        lenient().when(taxRateRepository.getBatchTaxRates(3L, 2L, "12345",
+                new java.util.HashSet<>(java.util.List.of(1L))))
+            .thenReturn(java.util.List.of(taxRate));
+
+        org.springframework.http.ResponseEntity<java.util.List<TaxRateVm>> response =
+            controller.getBatchTaxPercentsByAddress(java.util.List.of(1L), 3L, 2L, "12345");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().get(0)).isEqualTo(TaxRateVm.fromModel(taxRate));
+    }
+
+    @Test
+    void testTaxClassController_getPageableTaxClasses_shouldReturnOkResponse() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(
+            taxClassRepository);
+        com.yas.tax.controller.TaxClassController controller =
+            new com.yas.tax.controller.TaxClassController(taxClassService);
+
+        com.yas.tax.viewmodel.taxclass.TaxClassListGetVm vm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassListGetVm(java.util.List.of(), 0, 10, 0, 0, true);
+
+        lenient().when(taxClassRepository.findAll(
+                org.springframework.data.domain.PageRequest.of(0, 10)))
+            .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        com.yas.tax.viewmodel.taxclass.TaxClassListGetVm responseBody =
+            controller.getPageableTaxClasses(0, 10).getBody();
+
+        assertThat(responseBody.pageNo()).isEqualTo(0);
+        assertThat(responseBody.taxClassContent()).isEmpty();
+    }
+
+    @Test
+    void testTaxClassController_listTaxClasses_shouldReturnOkWithBody() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(
+            taxClassRepository);
+        com.yas.tax.controller.TaxClassController controller =
+            new com.yas.tax.controller.TaxClassController(taxClassService);
+
+        TaxClass taxClass = new TaxClass();
+        taxClass.setId(1L);
+        taxClass.setName("Standard");
+
+        lenient().when(taxClassRepository.findAll(
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "name")))
+            .thenReturn(java.util.List.of(taxClass));
+
+        org.springframework.http.ResponseEntity<java.util.List<com.yas.tax.viewmodel.taxclass.TaxClassVm>> response =
+            controller.listTaxClasses();
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().get(0).name()).isEqualTo("Standard");
+    }
+
+    @Test
+    void testTaxClassController_getTaxClass_shouldReturnOkWithBody() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(
+            taxClassRepository);
+        com.yas.tax.controller.TaxClassController controller =
+            new com.yas.tax.controller.TaxClassController(taxClassService);
+
+        TaxClass taxClass = new TaxClass();
+        taxClass.setId(1L);
+        taxClass.setName("Standard");
+
+        lenient().when(taxClassRepository.findById(1L)).thenReturn(java.util.Optional.of(taxClass));
+
+        org.springframework.http.ResponseEntity<com.yas.tax.viewmodel.taxclass.TaxClassVm> response =
+            controller.getTaxClass(1L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getBody().id()).isEqualTo(1L);
+        assertThat(response.getBody().name()).isEqualTo("Standard");
+    }
+
+    @Test
+    void testTaxClassController_createTaxClass_shouldReturnCreatedResponse() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(
+            taxClassRepository);
+        com.yas.tax.controller.TaxClassController controller =
+            new com.yas.tax.controller.TaxClassController(taxClassService);
+
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm("id-1", "Standard");
+
+        TaxClass taxClass = new TaxClass();
+        taxClass.setId(1L);
+        taxClass.setName("Standard");
+
+        lenient().when(taxClassRepository.existsByName("Standard")).thenReturn(false);
+        lenient().when(taxClassRepository.save(org.mockito.ArgumentMatchers.any(TaxClass.class))).thenReturn(taxClass);
+
+        org.springframework.web.util.UriComponentsBuilder uriBuilder =
+            org.springframework.web.util.UriComponentsBuilder.fromUriString("http://localhost");
+
+        org.springframework.http.ResponseEntity<com.yas.tax.viewmodel.taxclass.TaxClassVm> response =
+            controller.createTaxClass(postVm, uriBuilder);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(201);
+        assertThat(response.getHeaders().getLocation()).isNotNull();
+        assertThat(response.getHeaders().getLocation().getPath()).endsWith("/tax-classes/1");
+        assertThat(response.getBody().id()).isEqualTo(1L);
+    }
+
+    @Test
+    void testTaxClassController_updateTaxClass_shouldReturnNoContent() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(
+            taxClassRepository);
+        com.yas.tax.controller.TaxClassController controller =
+            new com.yas.tax.controller.TaxClassController(taxClassService);
+
+        com.yas.tax.viewmodel.taxclass.TaxClassPostVm postVm =
+            new com.yas.tax.viewmodel.taxclass.TaxClassPostVm("id-1", "Updated");
+
+        TaxClass existing = new TaxClass();
+        existing.setId(1L);
+        existing.setName("Old");
+
+        lenient().when(taxClassRepository.findById(1L)).thenReturn(java.util.Optional.of(existing));
+        lenient().when(taxClassRepository.existsByNameNotUpdatingTaxClass("Updated", 1L)).thenReturn(false);
+
+        org.springframework.http.ResponseEntity<Void> response =
+            controller.updateTaxClass(1L, postVm);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+    }
+
+    @Test
+    void testTaxClassController_deleteTaxClass_shouldReturnNoContent() {
+        com.yas.tax.service.TaxClassService taxClassService = new com.yas.tax.service.TaxClassService(
+            taxClassRepository);
+        com.yas.tax.controller.TaxClassController controller =
+            new com.yas.tax.controller.TaxClassController(taxClassService);
+
+        lenient().when(taxClassRepository.existsById(1L)).thenReturn(true);
+
+        org.springframework.http.ResponseEntity<Void> response =
+            controller.deleteTaxClass(1L);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+    }
 }
