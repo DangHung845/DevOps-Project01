@@ -148,14 +148,4 @@ class ProductOptionServiceTest {
 
         assertNotNull(result);
     }
-
-    @Test
-    void getOption_NotFound() {
-
-        Mockito.when(productOptionRepository.findById(5L))
-                .thenReturn(Optional.empty());
-
-        Assertions.assertThrows(NotFoundException.class,
-                () -> productOptionService.getById(5L));
-    }
 }

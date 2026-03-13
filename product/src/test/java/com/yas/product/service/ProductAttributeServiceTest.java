@@ -173,15 +173,68 @@ class ProductAttributeServiceTest {
     }
 
     @Test
-    void createAttribute_Duplicate() {
+    void saveProductAttribute_DuplicatedName() {
 
-        ProductAttributePostVm vm = new ProductAttributePostVm();
-        vm.setName("Color");
+        ProductAttributePostVm vm =
+                new ProductAttributePostVm("Color", null);
 
-        Mockito.when(productAttributeRepository.findByName("Color"))
-                .thenReturn(Optional.of(new ProductAttribute()));
+        Mockito.when(productAttributeRepository.findExistedName("Color", null))
+                .thenReturn(new ProductAttribute());
 
         Assertions.assertThrows(DuplicatedException.class,
-                () -> productAttributeService.create(vm));
+                () -> productAttributeService.save(vm));
+    }
+
+    @Test
+    void saveProductAttribute_GroupNotFound() {
+
+        ProductAttributePostVm vm =
+                new ProductAttributePostVm("Color", 1L);
+
+        Mockito.when(productAttributeRepository.findExistedName("Color", null))
+                .thenReturn(null);
+
+        Mockito.when(productAttributeGroupRepository.findById(1L))
+                .thenReturn(java.util.Optional.empty());
+
+        Assertions.assertThrows(BadRequestException.class,
+                () -> productAttributeService.save(vm));
+    }
+
+    @Test
+    void updateProductAttribute_NotFound() {
+
+        ProductAttributePostVm vm =
+                new ProductAttributePostVm("Color", null);
+
+        Mockito.when(productAttributeRepository.findExistedName("Color", 1L))
+                .thenReturn(null);
+
+        Mockito.when(productAttributeRepository.findById(1L))
+                .thenReturn(java.util.Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class,
+                () -> productAttributeService.update(vm, 1L));
+    }
+
+    @Test
+    void updateProductAttribute_GroupNotFound() {
+
+        ProductAttribute attribute = new ProductAttribute();
+
+        ProductAttributePostVm vm =
+                new ProductAttributePostVm("Color", 2L);
+
+        Mockito.when(productAttributeRepository.findExistedName("Color", 1L))
+                .thenReturn(null);
+
+        Mockito.when(productAttributeRepository.findById(1L))
+                .thenReturn(java.util.Optional.of(attribute));
+
+        Mockito.when(productAttributeGroupRepository.findById(2L))
+                .thenReturn(java.util.Optional.empty());
+
+        Assertions.assertThrows(BadRequestException.class,
+                () -> productAttributeService.update(vm, 1L));
     }
 }

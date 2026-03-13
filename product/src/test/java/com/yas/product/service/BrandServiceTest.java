@@ -150,18 +150,67 @@ class BrandServiceTest {
     }
 
     @Test
-    void deleteBrand_ProductExists() {
+    void createBrand_DuplicatedName() {
+        BrandPostVm vm = new BrandPostVm("Nike", "nike", true);
 
-        Brand brand = new Brand();
-        brand.setId(1L);
+        Mockito.when(brandRepository.findExistedName("Nike", null))
+                .thenReturn(new Brand());
+
+        Assertions.assertThrows(DuplicatedException.class,
+                () -> brandService.create(vm));
+    }
+
+    @Test
+    void updateBrand_NotFound() {
+        BrandPostVm vm = new BrandPostVm("Nike", "nike", true);
+
+        Mockito.when(brandRepository.findExistedName("Nike", 1L))
+                .thenReturn(null);
 
         Mockito.when(brandRepository.findById(1L))
-                .thenReturn(Optional.of(brand));
+                .thenReturn(java.util.Optional.empty());
 
-        Mockito.when(productRepository.existsByBrandId(1L))
-                .thenReturn(true);
+        Assertions.assertThrows(NotFoundException.class,
+                () -> brandService.update(vm, 1L));
+    }
+
+    @Test
+    void deleteBrand_NotFound() {
+
+        Mockito.when(brandRepository.findById(1L))
+                .thenReturn(java.util.Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class,
+                () -> brandService.delete(1L));
+    }
+
+    @Test
+    void deleteBrand_WithProducts() {
+
+        Brand brand = new Brand();
+        brand.setProducts(new java.util.ArrayList<>());
+
+        brand.getProducts().add(new com.yas.product.model.Product());
+
+        Mockito.when(brandRepository.findById(1L))
+                .thenReturn(java.util.Optional.of(brand));
 
         Assertions.assertThrows(BadRequestException.class,
                 () -> brandService.delete(1L));
+    }
+
+    @Test
+    void getBrandsByIds() {
+
+        Brand brand = new Brand();
+        brand.setName("Nike");
+
+        Mockito.when(brandRepository.findAllById(Mockito.any()))
+                .thenReturn(java.util.List.of(brand));
+
+        List<BrandVm> result =
+                brandService.getBrandsByIds(java.util.List.of(1L));
+
+        Assertions.assertEquals(1, result.size());
     }
 }

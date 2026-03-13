@@ -127,18 +127,4 @@ class ProductAttributeGroupServiceTest {
 
         assertThrows(DuplicatedException.class, () -> service.save(group));
     }
-
-    @Test
-    void test_save_product_attribute_group_duplicate_name() {
-
-        ProductAttributeGroup group = new ProductAttributeGroup();
-        group.setId(1L);
-        group.setName("Duplicate");
-
-        when(repository.findExistedName("Duplicate", 1L))
-                .thenReturn(new ProductAttributeGroup());
-
-        assertThrows(DuplicatedException.class,
-                () -> service.save(group));
-    }
 }
