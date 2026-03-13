@@ -241,7 +241,7 @@ public class AddressServiceTest {
         assertEquals(1, addressDetailVmList.size());
         assertEquals(address1.getId(), addressDetailVmList.getFirst().id());
     }
-    
+
     @Test
     void updateAddress_whenContactNameChanges_shouldPersistContactName() {
         generateTestData();
@@ -261,5 +261,28 @@ public class AddressServiceTest {
 
         assertNotNull(updated);
         assertEquals("new-contact", updated.contactName());
+    }
+
+    @Test
+    void updateAddress_whenAllFieldsChange_shouldPersistAllFields() {
+        generateTestData();
+
+        AddressPostVm addressPostVm = AddressPostVm.builder()
+            .contactName("contact-new")
+            .districtId(district.getId())
+            .countryId(country.getId())
+            .stateOrProvinceId(stateOrProvince.getId())
+            .city("another-city")
+            .zipCode("88888")
+            .build();
+
+        addressService.updateAddress(address1.getId(), addressPostVm);
+
+        AddressDetailVm updated = addressService.getAddress(address1.getId());
+
+        assertNotNull(updated);
+        assertEquals("contact-new", updated.contactName());
+        assertEquals("another-city", updated.city());
+        assertEquals("88888", updated.zipCode());
     }
 }
