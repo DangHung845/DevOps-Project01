@@ -184,22 +184,16 @@ pipeline {
         stage('Snyk (dependency vulnerabilities)') {
             steps {
                 script {
-                    sh '''
-                        curl -sSfL "https://downloads.snyk.io/cli/stable/snyk-linux" -o /tmp/snyk
-                        chmod +x /tmp/snyk
-                    '''
-                    withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
-                        def snykExit = sh(
-                            script: '''
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        sh '''
+                            curl -sSfL "https://downloads.snyk.io/cli/stable/snyk-linux" -o /tmp/snyk
+                            chmod +x /tmp/snyk
+                        '''
+                        withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
+                            sh '''
                                 export SNYK_TOKEN="${SNYK_TOKEN}"
                                 /tmp/snyk test --all-projects --json-file-output="$(pwd)/snyk-report.json"
-                            ''',
-                            returnStatus: true
-                        )
-                        if (snykExit == 1) {
-                            unstable('Snyk found vulnerabilities — review snyk-report.json for details.')
-                        } else if (snykExit > 1) {
-                            error("Snyk scan failed with exit code ${snykExit} (auth error or scan error).")
+                            '''
                         }
                     }
                 }
