@@ -184,19 +184,33 @@ pipeline {
         stage('Snyk (dependency vulnerabilities)') {
             steps {
                 script {
-                    // Run local snyk CLI if available; otherwise, skip without failing the build
-                    def hasSnyk = sh(script: 'command -v snyk >/dev/null 2>&1', returnStatus: true) == 0
-                    if (!hasSnyk) {
-                        echo 'snyk CLI not found on agent, skipping vulnerability scan.'
-                        return
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
+                            def hasDocker = sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
+                            if (hasDocker) {
+                                sh '''
+                                    docker run --rm \
+                                      -e SNYK_TOKEN \
+                                      -v "$(pwd):/project" \
+                                      -w /project \
+                                      snyk/snyk:maven \
+                                      snyk test --all-projects --json-file-output=/project/snyk-report.json
+                                '''
+                            } else {
+                                sh '''
+                                    curl -sSfL "https://downloads.snyk.io/cli/stable/snyk-linux" -o /tmp/snyk
+                                    chmod +x /tmp/snyk
+                                    export SNYK_TOKEN="${SNYK_TOKEN}"
+                                    /tmp/snyk test --all-projects --json-file-output="$(pwd)/snyk-report.json"
+                                '''
+                            }
+                        }
                     }
-
-                    withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
-                        sh '''
-                            export SNYK_TOKEN="${SNYK_TOKEN}"
-                            snyk test --all-projects
-                        '''
-                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'snyk-report.json', allowEmptyArchive: true
                 }
             }
         }
