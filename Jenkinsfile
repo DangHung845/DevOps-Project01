@@ -30,18 +30,13 @@ pipeline {
             steps {
                 script {
                     catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                        def hasDocker = sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
-                        if (hasDocker) {
-                            sh 'docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest detect --source="/path" --report-path="/path/gitleaks-report.json" --verbose'
-                        } else {
-                            sh '''
-                                GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
-                                curl -sSfL "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
-                                tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
-                                chmod +x /tmp/gitleaks
-                                /tmp/gitleaks detect --source="$(pwd)" --report-path="$(pwd)/gitleaks-report.json" --verbose
-                            '''
-                        }
+                        sh '''
+                            GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
+                            curl -sSfL "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
+                            tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+                            chmod +x /tmp/gitleaks
+                            /tmp/gitleaks detect --source="$(pwd)" --report-path="$(pwd)/gitleaks-report.json" --verbose
+                        '''
                     }
                 }
             }
