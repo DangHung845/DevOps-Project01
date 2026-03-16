@@ -29,14 +29,12 @@ pipeline {
         stage('Gitleaks (secrets scan)') {
             steps {
                 script {
-                    // Run local gitleaks CLI if available; otherwise, skip without failing the build
-                    def hasGitleaks = sh(script: 'command -v gitleaks >/dev/null 2>&1', returnStatus: true) == 0
-                    if (!hasGitleaks) {
-                        echo 'gitleaks CLI not found on agent, skipping secrets scan.'
-                        return
-                    }
-
-                    sh 'gitleaks detect --source=. --redact --verbose'
+                    sh 'docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest detect --source="/path" --report-path="/path/gitleaks-report.json"'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
                 }
             }
         }
