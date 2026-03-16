@@ -184,26 +184,22 @@ pipeline {
         stage('Snyk (dependency vulnerabilities)') {
             steps {
                 script {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                        withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
-                            def hasDocker = sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
-                            if (hasDocker) {
-                                sh '''
-                                    docker run --rm \
-                                      -e SNYK_TOKEN \
-                                      -v "$(pwd):/project" \
-                                      -w /project \
-                                      snyk/snyk:maven \
-                                      snyk test --all-projects --json-file-output=/project/snyk-report.json
-                                '''
-                            } else {
-                                sh '''
-                                    curl -sSfL "https://downloads.snyk.io/cli/stable/snyk-linux" -o /tmp/snyk
-                                    chmod +x /tmp/snyk
-                                    export SNYK_TOKEN="${SNYK_TOKEN}"
-                                    /tmp/snyk test --all-projects --json-file-output="$(pwd)/snyk-report.json"
-                                '''
-                            }
+                    sh '''
+                        curl -sSfL "https://downloads.snyk.io/cli/stable/snyk-linux" -o /tmp/snyk
+                        chmod +x /tmp/snyk
+                    '''
+                    withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
+                        def snykExit = sh(
+                            script: '''
+                                export SNYK_TOKEN="${SNYK_TOKEN}"
+                                /tmp/snyk test --all-projects --json-file-output="$(pwd)/snyk-report.json"
+                            ''',
+                            returnStatus: true
+                        )
+                        if (snykExit == 1) {
+                            unstable('Snyk found vulnerabilities — review snyk-report.json for details.')
+                        } else if (snykExit > 1) {
+                            error("Snyk scan failed with exit code ${snykExit} (auth error or scan error).")
                         }
                     }
                 }
