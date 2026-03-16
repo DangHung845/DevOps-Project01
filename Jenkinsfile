@@ -32,14 +32,14 @@ pipeline {
                     catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                         def hasDocker = sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
                         if (hasDocker) {
-                            sh 'docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest detect --source="/path" --report-path="/path/gitleaks-report.json"'
+                            sh 'docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest detect --source="/path" --report-path="/path/gitleaks-report.json" --verbose'
                         } else {
                             sh '''
                                 GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
                                 curl -sSfL "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
                                 tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
                                 chmod +x /tmp/gitleaks
-                                /tmp/gitleaks detect --source="$(pwd)" --report-path="$(pwd)/gitleaks-report.json"
+                                /tmp/gitleaks detect --source="$(pwd)" --report-path="$(pwd)/gitleaks-report.json" --verbose
                             '''
                         }
                     }
@@ -47,6 +47,25 @@ pipeline {
             }
             post {
                 always {
+                    script {
+                        if (fileExists('gitleaks-report.json')) {
+                            def report = readJSON file: 'gitleaks-report.json'
+                            def count = report instanceof List ? report.size() : 0
+                            if (count > 0) {
+                                echo "========================================"
+                                echo "  GITLEAKS FINDINGS SUMMARY: ${count} secret(s) found"
+                                echo "========================================"
+                                report.each { finding ->
+                                    echo "  [${finding.RuleID}] ${finding.File}:${finding.StartLine} — ${finding.Description}"
+                                }
+                                echo "========================================"
+                                currentBuild.description = "Gitleaks: ${count} secret(s) found"
+                            } else {
+                                echo "Gitleaks: No secrets found."
+                                currentBuild.description = "Gitleaks: clean"
+                            }
+                        }
+                    }
                     archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
                 }
             }
@@ -184,19 +203,39 @@ pipeline {
         stage('Snyk (dependency vulnerabilities)') {
             steps {
                 script {
-                    // Run local snyk CLI if available; otherwise, skip without failing the build
-                    def hasSnyk = sh(script: 'command -v snyk >/dev/null 2>&1', returnStatus: true) == 0
-                    if (!hasSnyk) {
-                        echo 'snyk CLI not found on agent, skipping vulnerability scan.'
-                        return
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
+                            sh '''
+                                curl -sSfL https://static.snyk.io/cli/latest/snyk-linux -o /tmp/snyk
+                                chmod +x /tmp/snyk
+                                export SNYK_TOKEN="${SNYK_TOKEN}"
+                                /tmp/snyk test --all-projects --json-file-output="$(pwd)/snyk-report.json"
+                            '''
+                        }
                     }
-
-                    withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
-                        sh '''
-                            export SNYK_TOKEN="${SNYK_TOKEN}"
-                            snyk test --all-projects
-                        '''
+                }
+            }
+            post {
+                always {
+                    script {
+                        if (fileExists('snyk-report.json')) {
+                            def report = readJSON file: 'snyk-report.json'
+                            def vulns = report?.vulnerabilities instanceof List ? report.vulnerabilities.size() : 0
+                            if (vulns > 0) {
+                                echo "========================================"
+                                echo "  SNYK FINDINGS SUMMARY: ${vulns} vulnerability(ies) found"
+                                echo "========================================"
+                                report.vulnerabilities.each { v ->
+                                    echo "  [${v.severity?.toUpperCase()}] ${v.packageName}@${v.version} — ${v.title}"
+                                }
+                                echo "========================================"
+                                currentBuild.description = (currentBuild.description ? currentBuild.description + ' | ' : '') + "Snyk: ${vulns} vuln(s)"
+                            } else {
+                                echo "Snyk: No vulnerabilities found."
+                            }
+                        }
                     }
+                    archiveArtifacts artifacts: 'snyk-report.json', allowEmptyArchive: true
                 }
             }
         }
