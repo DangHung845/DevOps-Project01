@@ -130,7 +130,7 @@ public class CustomerService {
         String guestUserEmail = randomGuestName + "_guest@yas.com";
         CredentialRepresentation credential = createPasswordCredentials(GUEST);
 
-        // Define user
+        // Define user/test jenkins
         UserRepresentation user = new UserRepresentation();
         user.setUsername(guestUserEmail);
         user.setFirstName(GUEST);
