@@ -57,8 +57,9 @@ pipeline {
                         'tax',
                         'media',
                         'search',
-                        'webhook',
-                        'common-library'
+                        'rating',
+                        'location',
+                        'inventory'
                     ]
 
                     // 4) Decide impacted modules (Option A: ONLY folder-based changes)
