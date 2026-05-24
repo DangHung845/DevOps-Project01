@@ -66,4 +66,12 @@ class TaxServiceTest {
 
         assertThat(result).isEqualTo(1.1);
     }
+
+    @Test
+    void testHandleDoubleFallback_shouldReturnNull() throws Throwable {
+
+        Double result = taxService.handleDoubleFallback(new RuntimeException());
+
+        assertThat(result).isNull();
+    }
 }

@@ -71,5 +71,12 @@ class CustomerServiceTest {
         assertThat(result.lastName()).isEqualTo("Doe");
 
     }
+    
+    @Test
+    void testHandleCustomerFallback_shouldReturnNull() throws Throwable {
 
+        CustomerVm result = customerService.handleCustomerFallback(new RuntimeException());
+
+        assertThat(result).isNull();
+    }
 }

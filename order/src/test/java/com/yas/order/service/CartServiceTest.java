@@ -120,4 +120,40 @@ class CartServiceTest {
         items.add(item2);
         return items;
     }
+
+    @Test
+    void testDeleteCartItems_whenOrderItemsEmpty_shouldStillCallApi() {
+
+        OrderVm orderVm = new OrderVm(
+                1L,
+                "customer@example.com",
+                null,
+                null,
+                null,
+                0f,
+                0f,
+                0,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                null,
+                OrderStatus.PENDING,
+                DeliveryMethod.GRAB_EXPRESS,
+                DeliveryStatus.CANCELLED,
+                PaymentStatus.PENDING,
+                new HashSet<>(),
+                UUID.randomUUID().toString()
+        );
+
+        RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+
+        when(restClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(any(URI.class))).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.headers(any())).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.body(any())).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
+
+        assertDoesNotThrow(() -> cartService.deleteCartItems(orderVm));
+
+        verify(restClient).post();
+    }
 }

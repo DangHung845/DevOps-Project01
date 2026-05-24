@@ -71,4 +71,18 @@ class PromotionServiceTest {
                         .build()
         );
     }
+    
+    @Test
+    void testUpdateUsagePromotion_whenEmptyList_shouldNoException() {
+
+        RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+
+        when(restClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(any(URI.class))).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.headers(any())).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.body(any())).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.retrieve()).thenReturn(responseSpec);
+
+        assertDoesNotThrow(() -> promotionService.updateUsagePromotion(List.of()));
+    }
 }

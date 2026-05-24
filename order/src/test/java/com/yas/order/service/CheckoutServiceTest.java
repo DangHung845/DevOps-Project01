@@ -242,4 +242,55 @@ class CheckoutServiceTest {
         verify(checkoutRepository).save(checkout);
         assertThat(checkout.getPaymentMethodId()).isNull();
     }
+    @Test
+    void testGetCheckoutPendingStateWithItemsById_whenCheckoutNotFound_throwNotFoundException() {
+
+        when(checkoutRepository.findByIdAndCheckoutState(anyString(), eq(CheckoutState.PENDING)))
+                .thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class,
+                () -> checkoutService.getCheckoutPendingStateWithItemsById("invalid-id"));
+    }
+
+    @Test
+    void testUpdateCheckoutStatus_whenNormalCase_returnOrderId() {
+
+        Checkout checkout = new Checkout();
+        checkout.setId(checkoutId);
+        checkout.setCreatedBy(checkoutCreated.getCreatedBy());
+
+        when(checkoutRepository.findById(anyString())).thenReturn(Optional.of(checkout));
+
+        var request = new com.yas.order.viewmodel.checkout.CheckoutStatusPutVm(
+                checkoutId,
+                CheckoutState.COMPLETED.name()
+        );
+
+        com.yas.order.model.Order order = new com.yas.order.model.Order();
+        order.setId(10L);
+
+        when(orderService.findOrderByCheckoutId(checkoutId)).thenReturn(order);
+
+        Long result = checkoutService.updateCheckoutStatus(request);
+
+        assertThat(result).isEqualTo(10L);
+
+        verify(checkoutRepository).save(checkout);
+    }
+    @Test
+    void testUpdateCheckoutStatus_whenNotOwner_throwForbidden() {
+        Checkout checkout = new Checkout();
+        checkout.setId(checkoutId);
+        checkout.setCreatedBy("another-user");
+
+        when(checkoutRepository.findById(anyString())).thenReturn(Optional.of(checkout));
+
+        var request = new com.yas.order.viewmodel.checkout.CheckoutStatusPutVm(
+                checkoutId,
+                CheckoutState.COMPLETED.name()
+        );
+
+        assertThrows(ForbiddenException.class,
+                () -> checkoutService.updateCheckoutStatus(request));
+    }
 }
