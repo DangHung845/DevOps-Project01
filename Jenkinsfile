@@ -29,13 +29,17 @@ pipeline {
         stage('Gitleaks (secrets scan)') {
             steps {
                 script {
-                    sh '''
+                    def rc = sh(script: '''
                         if command -v gitleaks >/dev/null 2>&1; then
                             gitleaks dir . --redact --verbose
                         else
                             echo "gitleaks CLI not found on agent, skipping secrets scan."
                         fi
-                    '''
+                    ''', returnStatus: true)
+                    if (rc != 0) {
+                        echo "WARNING: Gitleaks found secrets (exit code ${rc}). Review findings above."
+                        unstable('Gitleaks detected secrets')
+                    }
                 }
             }
         }
