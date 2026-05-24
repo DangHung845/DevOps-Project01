@@ -180,21 +180,25 @@ pipeline {
         }
 
         stage('Snyk (dependency vulnerabilities)') {
+            when { expression { return env.IMPACTED_MODULES?.trim() } }
             steps {
                 script {
-                    // Run local snyk CLI if available; otherwise, skip without failing the build
-                    def hasSnyk = sh(script: 'command -v snyk >/dev/null 2>&1', returnStatus: true) == 0
-                    if (!hasSnyk) {
-                        echo 'snyk CLI not found on agent, skipping vulnerability scan.'
-                        return
-                    }
-
                     withCredentials([string(credentialsId: env.SNYK_TOKEN_CRED_ID, variable: 'SNYK_TOKEN')]) {
                         sh '''
-                            export SNYK_TOKEN="${SNYK_TOKEN}"
-                            snyk test --all-projects
+                            set -e
+                            snyk --version
+                            mkdir -p snyk-reports
+                            snyk test --all-projects \
+                                --severity-threshold=high \
+                                --json-file-output=snyk-reports/snyk.json
+                            snyk monitor --all-projects
                         '''
                     }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'snyk-reports/*.json', allowEmptyArchive: true
                 }
             }
         }
